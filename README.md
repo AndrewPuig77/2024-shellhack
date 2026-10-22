@@ -5,7 +5,7 @@ math rendered properly, suggests YouTube videos, answers follow-up questions, an
 with practice problems.
 
 Originally built at ShellHacks 2024 by the team at
-[ProgramPedro/SHELLHACKS_2024_PROJECT](https://github.com/ProgramPedro/SHELLHACKS_2024_PROJECT).
+[ProgramPedro/SHELLHACKS_2024_PROJECT](https://github.com/ProgramPedro/SHELLHACKS_2024_PROJECT) but was left unable to be completed at that time.
 
 ## Features
 
