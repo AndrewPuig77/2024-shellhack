@@ -113,6 +113,7 @@ MATH_RULES = (
     "everywhere including inside answer options. "
     "Write chemical formulas upright with \\mathrm, like $$\\mathrm{CO_2}$$ or "
     "$$\\mathrm{C_6H_{12}O_6}$$, and units with \\text, like $$9.8\\text{ m/s}^2$$. "
+    "For a line break start a new paragraph; never use \\newline. "
     "Never use single dollar signs. Use plain text, not Markdown."
 )
 

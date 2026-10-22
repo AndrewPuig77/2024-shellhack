@@ -1034,7 +1034,7 @@ public class HelloController implements Initializable {
     //Splits text on $$ (the LaTeX delimiter) so formulas render as images inline with the words
     private static TextFlow mathText(String content) {
         TextFlow flow = new TextFlow();
-        String[] tokens = content.split("\\$\\$");
+        String[] tokens = NotesPdf.cleanLineBreaks(content).split("\\$\\$");
         for (int i = 0; i < tokens.length; i++) {
             if (i % 2 == 1) {
                 flow.getChildren().add(printImage(tokens[i]));

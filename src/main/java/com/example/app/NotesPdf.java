@@ -233,8 +233,20 @@ public final class NotesPdf {
         }
     }
 
+    //Gemini sometimes uses \newline, which the formula renderer can't draw. Outside formulas it
+    //becomes a real line break; inside, a space. (\\ is left alone: it separates rows in arrays,
+    //e.g. stacked binomials.) Shared with the app's mathText().
+    static String cleanLineBreaks(String content) {
+        String[] parts = content.split("\\$\\$", -1);
+        for (int i = 0; i < parts.length; i++) {
+            parts[i] = parts[i].replace("\\newline", i % 2 == 1 ? " " : "\n");
+        }
+        return String.join("$$", parts);
+    }
+
     //Text with $$...$$ formulas drawn inline as images, like the app's mathText()
     private static Paragraph mathParagraph(String content, Font font) {
+        content = cleanLineBreaks(content);
         Paragraph paragraph = new Paragraph();
         //Extra line spacing when there are formulas, since fractions are taller than text
         paragraph.setLeading(font.getSize() * (content.contains("$$") ? 1.8f : 1.45f));
