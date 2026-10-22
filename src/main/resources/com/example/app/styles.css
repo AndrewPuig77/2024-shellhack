@@ -165,15 +165,45 @@
     -fx-line-spacing: 4px;
 }
 
-.hyperlink {
-    -fx-text-fill: #7dd3fc;
-    -fx-font-size: 14px;
-    -fx-border-color: transparent;
-    -fx-padding: 2 0;
+/* YouTube thumbnail cards */
+.video-card {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 12;
+    -fx-border-color: -line;
+    -fx-border-radius: 12;
+    -fx-padding: 0 0 12 0;
+    -fx-spacing: 6;
+    -fx-cursor: hand;
 }
 
-.hyperlink:visited {
-    -fx-text-fill: #a5b4fc;
+.video-card:hover {
+    -fx-background-color: rgba(56, 189, 248, 0.12);
+    -fx-border-color: -accent;
+}
+
+.video-title {
+    -fx-text-fill: -text;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 4 12 0 12;
+}
+
+.video-channel {
+    -fx-text-fill: -muted;
+    -fx-font-size: 12px;
+    -fx-padding: 0 12;
+}
+
+.play-badge {
+    -fx-background-color: rgba(0, 0, 0, 0.6);
+    -fx-background-radius: 30;
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-padding: 8 12 8 15;
+}
+
+.video-card:hover .play-badge {
+    -fx-background-color: #ef4444;
 }
 
 .question-bubble {

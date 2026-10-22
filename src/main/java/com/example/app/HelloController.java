@@ -16,12 +16,13 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaView;
@@ -181,17 +182,53 @@ public class HelloController implements Initializable {
 
         JsonArray videos = response.has("Videos") ? response.getAsJsonArray("Videos") : new JsonArray();
         if (!videos.isEmpty()) {
-            VBox links = new VBox(6);
+            HBox cards = new HBox(14);
             for (JsonElement element : videos) {
-                JsonObject video = element.getAsJsonObject();
-                String videoUrl = text(video, "url");
-                Hyperlink link = new Hyperlink("▶  " + text(video, "title"));
-                link.setWrapText(true);
-                link.setOnAction(e -> openInBrowser(videoUrl));
-                links.getChildren().add(link);
+                cards.getChildren().add(videoCard(element.getAsJsonObject()));
             }
-            lessonContent.getChildren().add(section("Watch next", links));
+            lessonContent.getChildren().add(section("Watch next", cards));
         }
+    }
+
+    //A clickable YouTube thumbnail card; opens the video in the browser
+    private static VBox videoCard(JsonObject video) {
+        String videoUrl = text(video, "url");
+        String thumbnailUrl = text(video, "thumbnail");
+        if (thumbnailUrl.isEmpty()) {
+            //Older lessons only saved the link, but YouTube thumbnails follow a fixed pattern
+            thumbnailUrl = "https://i.ytimg.com/vi/" + videoUrl.substring(videoUrl.indexOf("v=") + 2) + "/mqdefault.jpg";
+        }
+
+        ImageView thumbnail = new ImageView(new Image(thumbnailUrl, true)); //Loads in the background
+        thumbnail.setPreserveRatio(true);
+        Label play = new Label("▶");
+        play.getStyleClass().add("play-badge");
+        StackPane preview = new StackPane(thumbnail, play);
+
+        Label title = new Label(text(video, "title"));
+        title.getStyleClass().add("video-title");
+        title.setWrapText(true);
+        Label channel = new Label(text(video, "channel"));
+        channel.getStyleClass().add("video-channel");
+        setShown(channel, !channel.getText().isEmpty());
+
+        VBox card = new VBox(preview, title, channel);
+        card.getStyleClass().add("video-card");
+        //Zero preferred width lets the row split its space evenly between the cards
+        card.setMinWidth(0);
+        card.setPrefWidth(0);
+        HBox.setHgrow(card, Priority.ALWAYS);
+        thumbnail.fitWidthProperty().bind(card.widthProperty().subtract(2));
+
+        Rectangle corners = new Rectangle();
+        corners.widthProperty().bind(thumbnail.fitWidthProperty());
+        corners.heightProperty().bind(thumbnail.fitWidthProperty().multiply(9.0 / 16));
+        corners.setArcWidth(22);
+        corners.setArcHeight(22);
+        preview.setClip(corners);
+
+        card.setOnMouseClicked(e -> openInBrowser(videoUrl));
+        return card;
     }
 
     private void showPractice() {
