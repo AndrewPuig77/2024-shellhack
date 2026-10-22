@@ -27,11 +27,12 @@
                         <Label fx:id="topicLabel" styleClass="top-title" />
                      </children>
                   </VBox>
+                  <Label fx:id="scoreLabel" styleClass="score" />
                </children>
             </HBox>
          </top>
          <center>
-            <ScrollPane fitToWidth="true" hbarPolicy="NEVER">
+            <ScrollPane fx:id="practiceScroll" fitToWidth="true" hbarPolicy="NEVER">
                <content>
                   <VBox styleClass="page" alignment="TOP_CENTER">
                      <children>

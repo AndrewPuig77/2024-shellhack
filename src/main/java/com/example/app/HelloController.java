@@ -84,6 +84,14 @@ public class HelloController implements Initializable {
     private Button askButton;
     @FXML
     private VBox practiceContent;
+    @FXML
+    private ScrollPane practiceScroll;
+    @FXML
+    private Label scoreLabel;
+
+    //Practice score for the current lesson; shared across screens, reset on a new lesson
+    private static int questionsAnswered = 0;
+    private static int questionsCorrect = 0;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -125,8 +133,12 @@ public class HelloController implements Initializable {
         new JsonCreation().jsonCreate(school, course, topic);
         Scene scene = root.getScene();
         loadingOverlay.setVisible(true);
-        runInBackground("default.py",
-                () -> showScreen(scene, "scene2.fxml"),
+        runInBackground(List.of("default.py"),
+                () -> {
+                    questionsAnswered = 0;
+                    questionsCorrect = 0;
+                    showScreen(scene, "scene2.fxml");
+                },
                 () -> {
                     loadingOverlay.setVisible(false);
                     errorLabel.setText("Couldn't build a lesson. Check your API keys and internet connection, then try again.");
@@ -156,7 +168,7 @@ public class HelloController implements Initializable {
         lessonContent.getChildren().addAll(row, thinking);
         scrollToBottom();
 
-        runInBackground("followup.py",
+        runInBackground(List.of("followup.py"),
                 () -> {
                     lessonContent.getChildren().remove(thinking);
                     JsonObject response = readResponse();
@@ -237,6 +249,7 @@ public class HelloController implements Initializable {
             return;
         }
         topicLabel.setText(text(response, "Topic"));
+        updateScore();
         practiceContent.getChildren().add(section("Question", mathText(text(response, "Question"))));
 
         //Hidden until the student picks an answer
@@ -256,6 +269,11 @@ public class HelloController implements Initializable {
             option.setOnMouseClicked(e -> {
                 buttons.forEach(b -> b.setDisable(true));
                 boolean right = number == correct;
+                questionsAnswered++;
+                if (right) {
+                    questionsCorrect++;
+                }
+                updateScore();
                 if (correct >= 1 && correct <= buttons.size()) {
                     buttons.get(correct - 1).getStyleClass().add("correct");
                 }
@@ -287,7 +305,52 @@ public class HelloController implements Initializable {
             });
             choices.getChildren().add(reveal);
         }
+        solution.getChildren().add(nextQuestionButtons());
         practiceContent.getChildren().addAll(choices, solution);
+    }
+
+    //Easier / Next question / Harder, shown under the solution once a question is answered
+    private VBox nextQuestionButtons() {
+        Button easier = new Button("Easier");
+        Button next = new Button("Next question");
+        next.getStyleClass().add("primary");
+        Button harder = new Button("Harder");
+        Label status = new Label();
+        status.getStyleClass().add("thinking");
+        setShown(status, false);
+
+        List<Button> all = List.of(easier, next, harder);
+        easier.setOnAction(e -> loadNewQuestion("easier", all, status));
+        next.setOnAction(e -> loadNewQuestion("same", all, status));
+        harder.setOnAction(e -> loadNewQuestion("harder", all, status));
+
+        HBox row = new HBox(10, easier, next, harder);
+        row.setAlignment(Pos.CENTER_LEFT);
+        VBox actions = new VBox(10, row, status);
+        actions.getStyleClass().add("practice-actions");
+        return actions;
+    }
+
+    private void loadNewQuestion(String difficulty, List<Button> buttons, Label status) {
+        buttons.forEach(b -> b.setDisable(true));
+        status.setText("Writing a new question...");
+        setShown(status, true);
+        runInBackground(List.of("practice.py", difficulty),
+                () -> {
+                    practiceContent.getChildren().clear();
+                    showPractice();
+                    practiceScroll.setVvalue(0);
+                },
+                () -> {
+                    status.setText("Couldn't get a new question. Try again in a moment.");
+                    buttons.forEach(b -> b.setDisable(false));
+                });
+    }
+
+    private void updateScore() {
+        scoreLabel.setText(questionsAnswered == 0
+                ? "No answers yet"
+                : "Score  " + questionsCorrect + " / " + questionsAnswered);
     }
 
     //Scales the shared background video to cover the whole window, cropping the edges
@@ -341,9 +404,10 @@ public class HelloController implements Initializable {
     }
 
     //Runs an AI script off the UI thread so the window stays responsive
-    private void runInBackground(String script, Runnable onSuccess, Runnable onFailure) {
+    //command is the script name followed by any arguments, e.g. ["practice.py", "harder"]
+    private void runInBackground(List<String> command, Runnable onSuccess, Runnable onFailure) {
         Thread worker = new Thread(() -> {
-            boolean succeeded = runPythonScript(script);
+            boolean succeeded = runPythonScript(command);
             Platform.runLater(succeeded ? onSuccess : onFailure);
         });
         worker.setDaemon(true);
@@ -351,11 +415,14 @@ public class HelloController implements Initializable {
     }
 
     //Runs one of the AI scripts and waits for it to finish writing output.json
-    private static boolean runPythonScript(String script) {
+    private static boolean runPythonScript(List<String> command) {
         //Prefer the project's virtual environment, which has the AI libraries installed
         String venvPython = ".venv/Scripts/python.exe";
         String python = new File(venvPython).exists() ? venvPython : "python";
-        ProcessBuilder pb = new ProcessBuilder(python, "src/SHELLHACKS_2024_PROJECT/" + script);
+        String script = command.get(0);
+        List<String> args = new ArrayList<>(List.of(python, "src/SHELLHACKS_2024_PROJECT/" + script));
+        args.addAll(command.subList(1, command.size()));
+        ProcessBuilder pb = new ProcessBuilder(args);
         pb.inheritIO(); //Show the script's output and errors in the console
         try {
             int exitCode = pb.start().waitFor();

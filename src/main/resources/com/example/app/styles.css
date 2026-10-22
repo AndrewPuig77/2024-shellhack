@@ -259,6 +259,20 @@
     -fx-border-color: #ef4444;
 }
 
+.score {
+    -fx-background-color: rgba(56, 189, 248, 0.14);
+    -fx-background-radius: 20;
+    -fx-text-fill: -text;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 16;
+}
+
+.practice-actions {
+    -fx-border-color: -line transparent transparent transparent;
+    -fx-padding: 14 0 0 0;
+}
+
 .feedback-correct {
     -fx-text-fill: #4ade80;
     -fx-font-size: 20px;
