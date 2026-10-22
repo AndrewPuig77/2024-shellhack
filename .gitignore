@@ -36,5 +36,26 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
 ### Secrets ###
 .env
+.env.*
+*.env
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+credentials*.json
+client_secret*.json
+service-account*.json
+
+### IntelliJ local settings ###
+.idea/workspace.xml
+.idea/shelf/
+
+### Python ###
+__pycache__/
+*.pyc
+.venv/
+venv/
