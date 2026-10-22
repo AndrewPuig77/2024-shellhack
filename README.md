@@ -9,7 +9,9 @@ Originally built at ShellHacks 2024 by the team at
 
 ## Features
 
-- **Lessons** tailored to your course, school and level (Beginner / Intermediate / Advanced), with LaTeX math drawn inline
+- **Lessons** in sections (Overview, Key ideas, Worked example, Common mistakes, Summary), tailored
+  to your course, school and level (Beginner / Intermediate / Advanced), with LaTeX math drawn inline
+- **Go deeper**: adds a section with a harder example, where the ideas come from, or related topics
 - **Videos**: three related YouTube videos as thumbnail cards
 - **Follow-up questions** in a chat-style thread under the lesson
 - **Practice problems** with instant feedback, "Why is my answer wrong?", Easier / Next / Harder, and a score
@@ -61,6 +63,7 @@ app runs in the background:
 | `followup.py` | Answers a follow-up question using the lesson and earlier follow-ups as context. |
 | `practice.py` | Writes a new practice question (`same`, `easier` or `harder`). |
 | `quiz.py` | Writes a 5-question quiz in a single request. |
+| `deeper.py` | Adds one "Go deeper" section to the lesson. |
 
 They talk through two JSON files next to the scripts: `input.json` (what you typed) and
 `output.json` (the current lesson). Every lesson is also saved in `lessons/` for the Recent

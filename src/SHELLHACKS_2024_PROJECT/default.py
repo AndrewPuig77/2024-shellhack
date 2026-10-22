@@ -124,11 +124,24 @@ LEVEL_RULES = (
     "rigor, edge cases and harder multi-step problems. "
 )
 
+# The lesson is split into these sections; the app shows each one as its own card
+LESSON_SECTIONS = (
+    "Write the lesson as sections with exactly these headings, in this order: "
+    "Overview (what it is and why it matters), "
+    "Key ideas (the core concepts, one short paragraph each), "
+    "Worked example (a complete example solved step by step), "
+    "Common mistakes (what students often get wrong and how to avoid it), "
+    "Summary (the few things to remember). "
+    "Put each heading in 'heading' and its text in 'body'. "
+    "Separate paragraphs and steps with a blank line. "
+)
+
 SYSTEM_PROMPT = (
     "You are a professor helping a student understand a topic from their course. "
-    "Tailor the explanation to the institution and course they give you. "
-    + LEVEL_RULES +
-    "After the explanation, write one practice problem as a multiple choice question "
+    "Tailor the lesson to the institution and course they give you. "
+    + LEVEL_RULES
+    + LESSON_SECTIONS +
+    "After the lesson, write one practice problem as a multiple choice question "
     "with exactly 4 options. Put only the question in 'question' and the 4 options, "
     "without letter labels, in 'options'. Then explain the correct answer. "
     + MATH_RULES
@@ -139,9 +152,10 @@ def repair_latex(text):
     # Gemini sometimes writes LaTeX like \frac inside its JSON without doubling the backslash,
     # so the JSON parser turns \f, \b, \t, \r and \n into control characters ("\frac" arrives
     # as a form feed + "rac"). Turn them back into backslashes. Inside $$...$$ that covers all
-    # five; outside math only \f and \b, since tabs and newlines are normal in text.
+    # five; outside math only \f, \b and \t (Gemini's prose never has real tabs, but it sometimes
+    # puts \text outside $$), since newlines are normal in text.
     in_math = {"\f": "\\f", "\b": "\\b", "\t": "\\t", "\r": "\\r", "\n": "\\n"}
-    in_text = {"\f": "\\f", "\b": "\\b"}
+    in_text = {"\f": "\\f", "\b": "\\b", "\t": "\\t"}
     parts = text.split("$$")
     for i, part in enumerate(parts):
         for char, escaped in (in_math if i % 2 == 1 else in_text).items():
@@ -156,8 +170,22 @@ def answer_number(letter):
     return "ABCD".index(letter) + 1 if letter and letter in "ABCD" else 0
 
 
+class Section(BaseModel):
+    heading: str
+    body: str
+
+
+def lesson_text(sections):
+    # The whole lesson as plain text, for prompts that need it as context
+    return "\n\n".join(f"{section['heading']}\n{section['body']}" for section in sections)
+
+
+def section_dict(section):
+    return {"heading": repair_latex(section.heading), "body": repair_latex(section.body)}
+
+
 class Lesson(BaseModel):
-    explanation: str
+    sections: list[Section]
     question: str
     options: list[str]
     answer_explanation: str
@@ -209,6 +237,7 @@ def default_ai():
     lesson = response.parsed
 
     correct_answer = answer_number(lesson.correct_letter)
+    sections = [section_dict(section) for section in lesson.sections]
 
     output = {
         "Response": {
@@ -217,7 +246,8 @@ def default_ai():
             "Course": course,
             "School": school,
             "Level": level,
-            "Explanation": repair_latex(lesson.explanation),
+            "Sections": sections,
+            "Explanation": lesson_text(sections),  # Plain-text copy used as context by the other scripts
             "Videos": video_links(topic),
             "Question": repair_latex(lesson.question),
             "Options": [repair_latex(option) for option in lesson.options],
@@ -226,7 +256,7 @@ def default_ai():
         }
     }
     save_output(output)
-    return lesson.explanation
+    return output["Response"]["Explanation"]
 
 
 if __name__ == "__main__":

@@ -268,7 +268,15 @@ public class HelloController implements Initializable {
             return;
         }
         topicLabel.setText(text(response, "Topic"));
-        lessonContent.getChildren().add(section("Lesson", mathText(text(response, "Explanation"))));
+        //One card per section (Overview, Key ideas, ...); older lessons only have one paragraph
+        JsonArray sections = response.has("Sections") ? response.getAsJsonArray("Sections") : new JsonArray();
+        for (JsonElement element : sections) {
+            lessonContent.getChildren().add(lessonSection(element.getAsJsonObject()));
+        }
+        if (sections.isEmpty()) {
+            lessonContent.getChildren().add(section("Lesson", mathText(text(response, "Explanation"))));
+        }
+        lessonContent.getChildren().add(goDeeperBox());
 
         JsonArray videos = response.has("Videos") ? response.getAsJsonArray("Videos") : new JsonArray();
         if (!videos.isEmpty()) {
@@ -287,6 +295,42 @@ public class HelloController implements Initializable {
                     questionBubble(text(turn, "question")),
                     section("Answer", mathText(text(turn, "answer"))));
         }
+    }
+
+    private static VBox lessonSection(JsonObject section) {
+        return section(text(section, "heading"), mathText(text(section, "body")));
+    }
+
+    //"Go deeper" adds a new section that goes further; new sections appear just above the button
+    private VBox goDeeperBox() {
+        Button deeper = new Button("Go deeper ↓");
+        Label hint = new Label("Adds a section with a harder example, where the ideas come from, or related topics.");
+        hint.getStyleClass().add("thinking");
+        hint.setWrapText(true);
+        VBox box = new VBox(8, deeper, hint);
+        box.setAlignment(Pos.CENTER);
+
+        deeper.setOnAction(e -> {
+            deeper.setDisable(true);
+            hint.setText("Writing a deeper section...");
+            runInBackground(List.of("deeper.py"),
+                    () -> {
+                        JsonObject response = readResponse();
+                        JsonArray sections = response == null ? new JsonArray() : response.getAsJsonArray("Sections");
+                        if (sections != null && !sections.isEmpty()) {
+                            int index = lessonContent.getChildren().indexOf(box);
+                            lessonContent.getChildren().add(index,
+                                    lessonSection(sections.get(sections.size() - 1).getAsJsonObject()));
+                        }
+                        hint.setText("Want more? Go deeper again.");
+                        deeper.setDisable(false);
+                    },
+                    message -> {
+                        hint.setText("Couldn't go deeper. " + message);
+                        deeper.setDisable(false);
+                    });
+        });
+        return box;
     }
 
     //The student's question, shown as a chat bubble on the right
