@@ -79,6 +79,8 @@ public class HelloController implements Initializable {
     private static final int EXIT_NO_PYTHON = -3;
     //The project's virtual environment, which has the AI libraries installed (see README)
     private static final String VENV_PYTHON = ".venv/Scripts/python.exe";
+    private static final String LESSON_UNREADABLE =
+            "Couldn't open this lesson: its file is missing or damaged. Start a new topic from the start screen.";
     //True while an AI script is running; shared by every screen
     private static final AtomicBoolean requestRunning = new AtomicBoolean(false);
     //LaTeX formulas are drawn in the same light color as the lesson text
@@ -152,6 +154,9 @@ public class HelloController implements Initializable {
         playBackgroundVideo();
         if (errorLabel != null) {
             errorLabel.managedProperty().bind(errorLabel.textProperty().isNotEmpty()); //No gap when there's no error
+        }
+        if (scoreLabel != null) {
+            scoreLabel.visibleProperty().bind(scoreLabel.textProperty().isNotEmpty()); //No empty pill
         }
         if (recentList != null) {
             showRecentLessons();
@@ -292,6 +297,7 @@ public class HelloController implements Initializable {
     private void showLesson() {
         JsonObject response = readResponse();
         if (response == null) {
+            showError(LESSON_UNREADABLE);
             return;
         }
         topicLabel.setText(text(response, "Topic"));
@@ -470,6 +476,7 @@ public class HelloController implements Initializable {
     private void showPractice() {
         JsonObject response = readResponse();
         if (response == null) {
+            showError(LESSON_UNREADABLE);
             return;
         }
         topicLabel.setText(text(response, "Topic"));
@@ -572,7 +579,7 @@ public class HelloController implements Initializable {
                 },
                 message -> {
                     loadingOverlay.setVisible(false);
-                    errorLabel.setText("Couldn't make a quiz. " + message);
+                    showError("Couldn't make a quiz. " + message);
                 });
     }
 
@@ -581,11 +588,13 @@ public class HelloController implements Initializable {
         quizContent.getChildren().clear();
         JsonObject response = readResponse();
         JsonArray quiz = response != null && response.has("Quiz") ? response.getAsJsonArray("Quiz") : new JsonArray();
-        if (response != null) {
-            topicLabel.setText(text(response, "Topic"));
+        if (response == null) {
+            showError(LESSON_UNREADABLE);
+            return;
         }
+        topicLabel.setText(text(response, "Topic"));
         if (quiz.isEmpty()) {
-            errorLabel.setText("No quiz found for this lesson. Go back and press Quiz me.");
+            showError("No quiz found for this lesson. Go back and press Quiz me.");
             return;
         }
         if (quizIndex >= quiz.size()) {
@@ -694,7 +703,7 @@ public class HelloController implements Initializable {
                 },
                 message -> {
                     loadingOverlay.setVisible(false);
-                    errorLabel.setText("Couldn't make flashcards. " + message);
+                    showError("Couldn't make flashcards. " + message);
                 });
     }
 
@@ -710,11 +719,13 @@ public class HelloController implements Initializable {
         JsonObject response = readResponse();
         JsonArray cards = response != null && response.has("Flashcards")
                 ? response.getAsJsonArray("Flashcards") : new JsonArray();
-        if (response != null) {
-            topicLabel.setText(text(response, "Topic"));
+        if (response == null) {
+            showError(LESSON_UNREADABLE);
+            return;
         }
+        topicLabel.setText(text(response, "Topic"));
         if (cards.isEmpty()) {
-            errorLabel.setText("No flashcards found for this lesson. Go back and press Flashcards.");
+            showError("No flashcards found for this lesson. Go back and press Flashcards.");
             return;
         }
         if (!deckStarted) {
@@ -829,7 +840,7 @@ public class HelloController implements Initializable {
             errorLabel.setText("");
             scoreLabel.setText("Saved");
         } catch (IOException e) {
-            errorLabel.setText("Couldn't save the file: " + e.getMessage());
+            showError("Couldn't save the file: " + e.getMessage());
         }
     }
 
@@ -1050,6 +1061,16 @@ public class HelloController implements Initializable {
         });
         reader.setDaemon(true);
         reader.start();
+    }
+
+    //Shows an error at the top of the page, scrolling up so it's visible even if the student was
+    //further down (e.g. at the Go deeper button)
+    private void showError(String message) {
+        errorLabel.setText(message);
+        ScrollPane scroll = lessonScroll != null ? lessonScroll : practiceScroll;
+        if (scroll != null) {
+            Platform.runLater(() -> scroll.setVvalue(0));
+        }
     }
 
     //The current lesson

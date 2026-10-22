@@ -34,8 +34,9 @@
          <center>
             <ScrollPane fx:id="practiceScroll" fitToWidth="true" hbarPolicy="NEVER">
                <content>
-                  <VBox styleClass="page" alignment="TOP_CENTER">
+                  <VBox styleClass="page" alignment="TOP_CENTER" spacing="12.0">
                      <children>
+                        <Label fx:id="errorLabel" styleClass="error" wrapText="true" maxWidth="860.0" />
                         <VBox fx:id="practiceContent" spacing="16.0" maxWidth="860.0" />
                      </children>
                   </VBox>
