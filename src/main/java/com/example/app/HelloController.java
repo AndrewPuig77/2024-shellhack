@@ -56,6 +56,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -69,6 +70,9 @@ public class HelloController implements Initializable {
     //A copy of every lesson, saved by the Python scripts, for the Recent lessons list
     private static final String LESSONS_DIR = "src/SHELLHACKS_2024_PROJECT/lessons";
     private static final int RECENT_LESSON_COUNT = 5;
+    //Long enough for both passes over the busy free-tier models, short enough to not hang forever
+    private static final int SCRIPT_TIMEOUT_SECONDS = 180;
+    private static final int EXIT_TIMED_OUT = -2;
     //LaTeX formulas are drawn in the same light color as the lesson text
     private static final java.awt.Color MATH_COLOR = new java.awt.Color(232, 240, 252);
 
@@ -968,12 +972,13 @@ public class HelloController implements Initializable {
         worker.start();
     }
 
-    //Exit codes come from run_script() in default.py
+    //Exit codes 3-5 come from run_script() in default.py; negative ones are set by runPythonScript()
     private static String errorMessage(int exitCode) {
         return switch (exitCode) {
             case 3 -> "You've used today's free Gemini requests. They reset at midnight Pacific time.";
             case 4 -> "Gemini is busy right now. Try again in a minute.";
             case 5 -> "Gemini rejected the API key. Check GEMINI_API_KEY in the .env file.";
+            case EXIT_TIMED_OUT -> "Gemini took too long to answer. Check your internet connection and try again.";
             default -> "Something went wrong. Check your internet connection, and the console for details.";
         };
     }
@@ -989,7 +994,14 @@ public class HelloController implements Initializable {
         ProcessBuilder pb = new ProcessBuilder(args);
         pb.inheritIO(); //Show the script's output and errors in the console
         try {
-            int exitCode = pb.start().waitFor();
+            Process process = pb.start();
+            //A hung network call would otherwise leave the spinner up forever
+            if (!process.waitFor(SCRIPT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                System.out.println(script + " took longer than " + SCRIPT_TIMEOUT_SECONDS + "s and was stopped");
+                return EXIT_TIMED_OUT;
+            }
+            int exitCode = process.exitValue();
             if (exitCode != 0) {
                 System.out.println(script + " failed with exit code " + exitCode);
             }
