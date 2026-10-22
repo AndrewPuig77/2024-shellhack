@@ -57,6 +57,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -73,6 +74,8 @@ public class HelloController implements Initializable {
     //Long enough for both passes over the busy free-tier models, short enough to not hang forever
     private static final int SCRIPT_TIMEOUT_SECONDS = 180;
     private static final int EXIT_TIMED_OUT = -2;
+    //True while an AI script is running; shared by every screen
+    private static final AtomicBoolean requestRunning = new AtomicBoolean(false);
     //LaTeX formulas are drawn in the same light color as the lesson text
     private static final java.awt.Color MATH_COLOR = new java.awt.Color(232, 240, 252);
 
@@ -958,8 +961,15 @@ public class HelloController implements Initializable {
     //command is the script name followed by any arguments, e.g. ["practice.py", "harder"]
     //onFailure receives a message explaining what went wrong
     private void runInBackground(List<String> command, Runnable onSuccess, Consumer<String> onFailure) {
+        //Every script rewrites output.json, so two at once (e.g. Go deeper while a follow-up is
+        //being answered) would lose one result. Only one runs at a time.
+        if (!requestRunning.compareAndSet(false, true)) {
+            onFailure.accept("Another request is still running. Wait for it to finish, then try again.");
+            return;
+        }
         Thread worker = new Thread(() -> {
             int exitCode = runPythonScript(command);
+            requestRunning.set(false);
             Platform.runLater(() -> {
                 if (exitCode == 0) {
                     onSuccess.run();
