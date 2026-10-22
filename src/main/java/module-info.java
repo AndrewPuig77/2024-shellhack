@@ -3,7 +3,6 @@ module com.example.app {
     requires javafx.fxml;
     requires transitive javafx.media;
     requires org.json;
-    requires org.python.jython2.standalone;
     requires java.sql;
     requires com.google.gson;
     requires jlatexmath;
