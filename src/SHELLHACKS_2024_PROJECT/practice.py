@@ -5,7 +5,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 # Shares the file paths, .env loading and model retries with the lesson script
-from default import MATH_RULES, OUTPUT_FILE, answer_number, gemini_client, generate, run_script, save_output
+from default import LEVEL_RULES, MATH_RULES, OUTPUT_FILE, answer_number, gemini_client, generate, run_script, save_output
 
 SYSTEM_PROMPT = (
     "You are a professor writing practice problems for a student who just studied a topic. "
@@ -13,6 +13,7 @@ SYSTEM_PROMPT = (
     "It must test something different from the questions the student has already done. "
     "Put only the question in 'question' and the 4 options, without letter labels, "
     "in 'options'. Then explain the correct answer. "
+    + LEVEL_RULES
     + MATH_RULES
 )
 
@@ -38,7 +39,8 @@ def practice_ai(difficulty):
     # Every question asked so far for this lesson, so the new one isn't a repeat
     asked = lesson.get("PastQuestions", []) + [lesson.get("Question", "")]
     contents = (
-        f"Topic: {lesson.get('Topic', '')}\n\n"
+        f"Topic: {lesson.get('Topic', '')}\n"
+        f"Student level: {lesson.get('Level', 'Intermediate')}\n\n"
         f"The lesson they studied:\n{lesson.get('Explanation', '')}\n\n"
         "Questions they've already done:\n"
         + "\n".join(f"- {question}" for question in asked)

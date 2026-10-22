@@ -19,6 +19,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Toggle;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -84,6 +86,8 @@ public class HelloController implements Initializable {
     private Label errorLabel;
     @FXML
     private VBox loadingOverlay;
+    @FXML
+    private ToggleGroup levelGroup; //Beginner / Intermediate / Advanced
     @FXML
     private VBox recentCard;
     @FXML
@@ -162,7 +166,9 @@ public class HelloController implements Initializable {
         }
         errorLabel.setText("");
 
-        new JsonCreation().jsonCreate(school, course, topic);
+        Toggle selectedLevel = levelGroup.getSelectedToggle();
+        String level = selectedLevel == null ? "Intermediate" : (String) selectedLevel.getUserData();
+        new JsonCreation().jsonCreate(school, course, topic, level);
         Scene scene = root.getScene();
         loadingOverlay.setVisible(true);
         runInBackground(List.of("default.py"),
@@ -194,8 +200,14 @@ public class HelloController implements Initializable {
             topic.getStyleClass().add("recent-topic");
             topic.setWrapText(true);
             String date = Instant.ofEpochMilli(file.lastModified()).atZone(ZoneId.systemDefault()).format(dateFormat);
-            String course = text(lesson, "Course");
-            Label meta = new Label(course.isEmpty() ? date : course + "  ·  " + date);
+            //e.g. "Calculus I  ·  Beginner  ·  Oct 22", skipping whatever wasn't saved
+            List<String> parts = new ArrayList<>();
+            for (String part : List.of(text(lesson, "Course"), text(lesson, "Level"), date)) {
+                if (!part.isEmpty()) {
+                    parts.add(part);
+                }
+            }
+            Label meta = new Label(String.join("  ·  ", parts));
             meta.getStyleClass().add("recent-meta");
 
             VBox item = new VBox(topic, meta);

@@ -54,6 +54,29 @@
     -fx-text-fill: #fca5a5;
 }
 
+/* Level picker on the start screen */
+.toggle-button.level {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-background-radius: 10;
+    -fx-border-color: -line;
+    -fx-border-radius: 10;
+    -fx-text-fill: -muted;
+    -fx-padding: 9 10;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+}
+
+.toggle-button.level:hover {
+    -fx-border-color: -accent;
+}
+
+.toggle-button.level:selected {
+    -fx-background-color: rgba(56, 189, 248, 0.18);
+    -fx-border-color: -accent;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
 /* Recent lessons list on the start screen */
 .recent-card {
     -fx-padding: 28 24;

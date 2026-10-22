@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class JsonCreation {
-    public void jsonCreate(String schoolInput, String courseInput, String topicInput) {
+    public void jsonCreate(String schoolInput, String courseInput, String topicInput, String levelInput) {
         JSONObject jsonObject = new JSONObject();// New JSON object to take in the response from user
         //jsonObject.put("Input", text);
         // First input from user will be these three keys and values
@@ -17,6 +17,7 @@ public class JsonCreation {
         jsonObject.put("School", schoolInput);
         jsonObject.put("Course", courseInput);
         jsonObject.put("Topic", topicInput);
+        jsonObject.put("Level", levelInput); //Beginner, Intermediate or Advanced
 
         String directory = "src/SHELLHACKS_2024_PROJECT/";
         String fileName = "input.json";

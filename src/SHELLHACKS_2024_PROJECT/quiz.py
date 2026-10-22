@@ -4,7 +4,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 # Shares the file paths, .env loading and model retries with the lesson script
-from default import MATH_RULES, OUTPUT_FILE, answer_number, gemini_client, generate, run_script, save_output
+from default import LEVEL_RULES, MATH_RULES, OUTPUT_FILE, answer_number, gemini_client, generate, run_script, save_output
 
 QUIZ_LENGTH = 5
 
@@ -15,6 +15,7 @@ SYSTEM_PROMPT = (
     "Don't repeat any question the student has already done. "
     "For each question put only the question in 'question' and the 4 options, without "
     "letter labels, in 'options'. Then explain the correct answer. "
+    + LEVEL_RULES
     + MATH_RULES
 )
 
@@ -37,7 +38,8 @@ def quiz_ai():
 
     asked = lesson.get("PastQuestions", []) + [lesson.get("Question", "")]
     contents = (
-        f"Topic: {lesson.get('Topic', '')}\n\n"
+        f"Topic: {lesson.get('Topic', '')}\n"
+        f"Student level: {lesson.get('Level', 'Intermediate')}\n\n"
         f"The lesson they studied:\n{lesson.get('Explanation', '')}\n\n"
         "Questions they've already done:\n" + "\n".join(f"- {question}" for question in asked)
     )

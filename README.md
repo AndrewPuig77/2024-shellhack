@@ -9,7 +9,7 @@ Originally built at ShellHacks 2024 by the team at
 
 ## Features
 
-- **Lessons** tailored to your course and school, with LaTeX math drawn inline
+- **Lessons** tailored to your course, school and level (Beginner / Intermediate / Advanced), with LaTeX math drawn inline
 - **Videos**: three related YouTube videos as thumbnail cards
 - **Follow-up questions** in a chat-style thread under the lesson
 - **Practice problems** with instant feedback, "Why is my answer wrong?", Easier / Next / Harder, and a score

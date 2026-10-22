@@ -116,9 +116,18 @@ MATH_RULES = (
     "Never use single dollar signs. Use plain text, not Markdown."
 )
 
+# How each level on the start screen should change the lesson
+LEVEL_RULES = (
+    "Pitch everything at the student's level. Beginner: assume little background, use "
+    "simple language and concrete examples, and keep problems straightforward. "
+    "Intermediate: a typical student taking the course. Advanced: go deeper, with more "
+    "rigor, edge cases and harder multi-step problems. "
+)
+
 SYSTEM_PROMPT = (
     "You are a professor helping a student understand a topic from their course. "
     "Tailor the explanation to the institution and course they give you. "
+    + LEVEL_RULES +
     "After the explanation, write one practice problem as a multiple choice question "
     "with exactly 4 options. Put only the question in 'question' and the 4 options, "
     "without letter labels, in 'options'. Then explain the correct answer. "
@@ -170,10 +179,11 @@ def default_ai():
     school = data["School"]
     course = data["Course"]
     topic = data["Topic"]
+    level = data.get("Level", "Intermediate")
 
     client = gemini_client()
     request = dict(
-        contents=f"Institution: {school} | Course: {course} | Topic: {topic}",
+        contents=f"Institution: {school} | Course: {course} | Topic: {topic} | Level: {level}",
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             response_mime_type="application/json",
@@ -191,6 +201,7 @@ def default_ai():
             "Topic": topic,
             "Course": course,
             "School": school,
+            "Level": level,
             "Explanation": lesson.explanation,
             "Videos": video_links(topic),
             "Question": lesson.question,

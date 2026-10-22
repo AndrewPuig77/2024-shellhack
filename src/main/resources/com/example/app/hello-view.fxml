@@ -4,6 +4,8 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
@@ -12,6 +14,9 @@
 
 <!-- Start screen: pick a school, course and topic, or reopen a recent lesson -->
 <StackPane fx:id="root" xmlns="http://javafx.com/javafx/23" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.app.HelloController">
+   <fx:define>
+      <ToggleGroup fx:id="levelGroup" />
+   </fx:define>
    <children>
       <MediaView fx:id="mediaView" managed="false" />
       <Region styleClass="scrim" />
@@ -44,6 +49,18 @@
                      <children>
                         <Label styleClass="field-label" text="School / Institution" />
                         <TextField fx:id="textBox1" promptText="e.g. Florida International University" />
+                     </children>
+                  </VBox>
+                  <VBox spacing="6.0">
+                     <children>
+                        <Label styleClass="field-label" text="Level" />
+                        <HBox spacing="8.0">
+                           <children>
+                              <ToggleButton styleClass="level" text="Beginner" userData="Beginner" toggleGroup="$levelGroup" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                              <ToggleButton styleClass="level" text="Intermediate" userData="Intermediate" toggleGroup="$levelGroup" selected="true" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                              <ToggleButton styleClass="level" text="Advanced" userData="Advanced" toggleGroup="$levelGroup" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                           </children>
+                        </HBox>
                      </children>
                   </VBox>
 
