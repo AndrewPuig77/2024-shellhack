@@ -12,7 +12,7 @@ Originally built at ShellHacks 2024 by the team at
 - **Lessons** tailored to your course and school, with LaTeX math drawn inline
 - **Videos**: three related YouTube videos as thumbnail cards
 - **Follow-up questions** in a chat-style thread under the lesson
-- **Practice problems** with instant feedback, Easier / Next / Harder, and a score
+- **Practice problems** with instant feedback, "Why is my answer wrong?", Easier / Next / Harder, and a score
 - **Recent lessons** on the start screen: reopen one instantly without using a Gemini request
 
 ## Setup

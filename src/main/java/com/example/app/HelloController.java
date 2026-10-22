@@ -363,6 +363,11 @@ public class HelloController implements Initializable {
                     feedback.setText("Here's how to solve it.");
                 }
                 feedback.getStyleClass().setAll(right ? "feedback-correct" : "feedback-wrong");
+                if (!right && correct >= 1) {
+                    //Above the Easier / Next / Harder buttons, which are always last
+                    solution.getChildren().add(solution.getChildren().size() - 1,
+                            whyWrongBox((char) ('A' + number - 1)));
+                }
                 setShown(solution, true);
             });
             buttons.add(option);
@@ -382,6 +387,36 @@ public class HelloController implements Initializable {
         }
         solution.getChildren().add(nextQuestionButtons());
         practiceContent.getChildren().addAll(choices, solution);
+    }
+
+    //"Why is B wrong?" after a wrong answer: asks Gemini about the student's specific choice.
+    //followup.py already sends the current practice question and options as context.
+    private VBox whyWrongBox(char picked) {
+        Button why = new Button("Why is " + picked + " wrong?");
+        Label status = new Label();
+        status.getStyleClass().add("thinking");
+        setShown(status, false);
+        VBox box = new VBox(10, why, status);
+        box.getStyleClass().add("practice-actions");
+
+        why.setOnAction(e -> {
+            why.setDisable(true);
+            status.setText("Thinking...");
+            setShown(status, true);
+            new JsonCreation().genJson("On the practice problem, I picked " + picked + ". Why is that wrong?");
+            runInBackground(List.of("followup.py"),
+                    () -> {
+                        JsonObject response = readResponse();
+                        Label heading = new Label("WHY " + picked + " IS WRONG");
+                        heading.getStyleClass().add("section-title");
+                        box.getChildren().setAll(heading, mathText(response == null ? "" : text(response, "Output")));
+                    },
+                    message -> {
+                        status.setText("Couldn't get an explanation. " + message);
+                        why.setDisable(false);
+                    });
+        });
+        return box;
     }
 
     //Easier / Next question / Harder, shown under the solution once a question is answered
