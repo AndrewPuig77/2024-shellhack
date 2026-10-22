@@ -1,33 +1,11 @@
 import json
 import os
-import time
 
-from dotenv import load_dotenv
 from google import genai
-from google.genai import errors, types
+from google.genai import types
 
-# Files live next to this script, so it works no matter where it's launched from
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-INPUT_FILE = os.path.join(BASE_DIR, "input.json")
-OUTPUT_FILE = os.path.join(BASE_DIR, "output.json")
-load_dotenv(os.path.join(BASE_DIR, ".env"))
-
-# Free-tier models sometimes return 503 under load, so try these in order
-MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"]
-
-
-def generate(client, **request):
-    # Two passes over the list, with a short pause, before giving up
-    attempts = MODELS + MODELS
-    for i, model in enumerate(attempts):
-        try:
-            return client.models.generate_content(model=model, **request)
-        except errors.ServerError as e:
-            if i == len(attempts) - 1:
-                raise
-            print(f"{model} unavailable, trying next model: {e}")
-            if i == len(MODELS) - 1:
-                time.sleep(5)
+# Shares the file paths, .env loading and model retries with the lesson script
+from default import INPUT_FILE, OUTPUT_FILE, generate
 
 
 SYSTEM_PROMPT = (

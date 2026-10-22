@@ -15,8 +15,15 @@ INPUT_FILE = os.path.join(BASE_DIR, "input.json")
 OUTPUT_FILE = os.path.join(BASE_DIR, "output.json")
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-# Free-tier models sometimes return 503 under load, so try these in order
-MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"]
+# Free-tier models are sometimes busy (5xx), and each one only allows 20 requests a day
+# (429), so try these in order. Each model has its own daily quota.
+MODELS = [
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+]
 
 
 def generate(client, **request):
@@ -25,10 +32,11 @@ def generate(client, **request):
     for i, model in enumerate(attempts):
         try:
             return client.models.generate_content(model=model, **request)
-        except errors.ServerError as e:
-            if i == len(attempts) - 1:
+        except errors.APIError as e:
+            retryable = isinstance(e, errors.ServerError) or e.code == 429
+            if not retryable or i == len(attempts) - 1:
                 raise
-            print(f"{model} unavailable, trying next model: {e}")
+            print(f"{model} unavailable, trying next model: {e.code} {e.status}")
             if i == len(MODELS) - 1:
                 time.sleep(5)
 
@@ -43,6 +51,12 @@ SYSTEM_PROMPT = (
     "everywhere including inside the options. "
     "Never use single dollar signs. Use plain text, not Markdown."
 )
+
+
+def answer_number(letter):
+    # "B" -> 2, matching the order of the options; 0 if the model gave something odd
+    letter = letter.strip().upper()[:1]
+    return "ABCD".index(letter) + 1 if letter and letter in "ABCD" else 0
 
 
 class Lesson(BaseModel):
@@ -96,8 +110,7 @@ def default_ai():
     response = generate(client, **request)
     lesson = response.parsed
 
-    letter = lesson.correct_letter.strip().upper()[:1]
-    correct_answer = "ABCD".index(letter) + 1 if letter and letter in "ABCD" else 0
+    correct_answer = answer_number(lesson.correct_letter)
 
     output = {
         "Response": {
