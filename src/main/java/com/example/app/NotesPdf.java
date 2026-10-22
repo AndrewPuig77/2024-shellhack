@@ -282,7 +282,7 @@ public final class NotesPdf {
             //Drop the image by its depth below the baseline so it lines up with the text
             return new Chunk(pdfImage, 0, -icon.getIconDepth() / MATH_SCALE, true);
         } catch (Exception e) {
-            System.out.println("Error drawing formula in PDF: " + e);
+            AppLog.log("Error drawing formula in PDF: " + e);
             return null; //Falls back to showing the LaTeX as plain text
         }
     }
@@ -295,7 +295,7 @@ public final class NotesPdf {
                 BaseFont base = BaseFont.createFont(path, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
                 return new Font(base, size, Font.NORMAL, color);
             } catch (Exception e) {
-                System.out.println("Couldn't load " + path + ", using Helvetica: " + e);
+                AppLog.log("Couldn't load " + path + ", using Helvetica: " + e);
             }
         }
         return FontFactory.getFont(bold ? FontFactory.HELVETICA_BOLD : FontFactory.HELVETICA, size, color);

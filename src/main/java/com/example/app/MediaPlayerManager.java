@@ -29,7 +29,7 @@ public class MediaPlayerManager {
             File file = new File("src/main/resources/com/example/app/background.mp4");
             MediaPlayer player = new MediaPlayer(new Media(file.toURI().toString()));
             player.setOnError(() -> {
-                System.out.println("Background video error: " + player.getError());
+                AppLog.log("Background video error: " + player.getError());
                 player.dispose();
                 retryLater();
             });
@@ -37,14 +37,14 @@ public class MediaPlayerManager {
             player.play(); // Start playing
             mediaPlayer.set(player);
         } catch (Exception e) {
-            System.out.println("Background video error: " + e);
+            AppLog.log("Background video error: " + e);
             retryLater();
         }
     }
 
     private void retryLater() {
         if (retries >= MAX_RETRIES) {
-            System.out.println("Giving up on the background video");
+            AppLog.log("Giving up on the background video");
             return;
         }
         retries++;

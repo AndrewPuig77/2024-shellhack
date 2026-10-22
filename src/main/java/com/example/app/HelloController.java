@@ -39,9 +39,11 @@ import java.awt.Desktop;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URL;
@@ -406,7 +408,7 @@ public class HelloController implements Initializable {
             try {
                 Desktop.getDesktop().open(file);
             } catch (Exception e) {
-                System.out.println("Couldn't open " + file + ": " + e);
+                AppLog.log("Couldn't open " + file + ": " + e);
             }
         }).start();
     }
@@ -1008,28 +1010,46 @@ public class HelloController implements Initializable {
         List<String> args = new ArrayList<>(List.of(python, "src/SHELLHACKS_2024_PROJECT/" + script));
         args.addAll(command.subList(1, command.size()));
         ProcessBuilder pb = new ProcessBuilder(args);
-        pb.inheritIO(); //Show the script's output and errors in the console
+        pb.redirectErrorStream(true); //Errors and normal output in one stream
         try {
+            AppLog.log("Running " + String.join(" ", command));
             Process process = pb.start();
+            logOutput(script, process);
             //A hung network call would otherwise leave the spinner up forever
             if (!process.waitFor(SCRIPT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
-                System.out.println(script + " took longer than " + SCRIPT_TIMEOUT_SECONDS + "s and was stopped");
+                AppLog.log(script + " took longer than " + SCRIPT_TIMEOUT_SECONDS + "s and was stopped");
                 return EXIT_TIMED_OUT;
             }
             int exitCode = process.exitValue();
             if (exitCode != 0) {
-                System.out.println(script + " failed with exit code " + exitCode);
+                AppLog.log(script + " failed with exit code " + exitCode);
             }
             return exitCode;
         } catch (IOException e) {
             //The Python program itself couldn't be started (not installed, or not on the PATH)
-            System.out.println("Couldn't run " + script + ": " + e);
+            AppLog.log("Couldn't run " + script + ": " + e);
             return EXIT_NO_PYTHON;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return -1;
         }
+    }
+
+    //Copies a script's output, line by line, to the console and the log file
+    private static void logOutput(String script, Process process) {
+        Thread reader = new Thread(() -> {
+            try (BufferedReader lines = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = lines.readLine()) != null) {
+                    AppLog.log("  " + script + ": " + line);
+                }
+            } catch (IOException e) {
+                //The process was stopped (e.g. timed out); nothing more to read
+            }
+        });
+        reader.setDaemon(true);
+        reader.start();
     }
 
     //The current lesson
@@ -1041,7 +1061,7 @@ public class HelloController implements Initializable {
         try (FileReader reader = new FileReader(path)) {
             return JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("Response");
         } catch (Exception e) {
-            System.out.println("Couldn't read " + path + ": " + e);
+            AppLog.log("Couldn't read " + path + ": " + e);
             return null;
         }
     }
@@ -1086,7 +1106,7 @@ public class HelloController implements Initializable {
             try {
                 Desktop.getDesktop().browse(URI.create(url));
             } catch (Exception e) {
-                System.out.println("Couldn't open " + url + ": " + e);
+                AppLog.log("Couldn't open " + url + ": " + e);
             }
         }).start();
     }
@@ -1116,7 +1136,7 @@ public class HelloController implements Initializable {
             image.setTranslateY(formulaIcon.getIconDepth() / 2.0); //Line the formula's baseline up with the text
             return image;
         } catch (Exception e) {
-            System.out.println("Error creating LaTeX image: " + e);
+            AppLog.log("Error creating LaTeX image: " + e);
             return new ImageView(); // Return empty ImageView on error
         }
     }

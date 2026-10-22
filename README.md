@@ -56,6 +56,9 @@ Both are free. `.env` is gitignored, so keys never get committed.
 
 Run it from the project folder: the app finds its Python scripts and data files by relative path.
 
+If something goes wrong, check `logs/uhackedu.log`: it has timestamped messages from the app and the
+Python scripts (Gemini errors, retries, timeouts).
+
 ## How it works
 
 The JavaFX app (Java) handles the screens. The AI work happens in small Python scripts that the

@@ -64,3 +64,6 @@ venv/
 src/SHELLHACKS_2024_PROJECT/input.json
 src/SHELLHACKS_2024_PROJECT/output.json
 src/SHELLHACKS_2024_PROJECT/lessons/
+
+### App log ###
+logs/
