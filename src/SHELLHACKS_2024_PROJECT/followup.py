@@ -47,9 +47,10 @@ def followup_ai():
     with open(OUTPUT_FILE, "r") as f:
         data = json.load(f)
     previous = data.get("Response", {})
+    options = "\n".join(f"{letter}) {option}" for letter, option in zip("ABCD", previous.get("Options", [])))
     lesson = (
         f"Explanation:\n{previous.get('Explanation', '')}\n\n"
-        f"Practice problem:\n{previous.get('Question', '')}\n\n"
+        f"Practice problem:\n{previous.get('Question', '')}\n{options}\n\n"
         f"Answer:\n{previous.get('Answer', '')}"
     )
 

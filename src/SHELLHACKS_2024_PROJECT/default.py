@@ -1,3 +1,4 @@
+import html
 import json
 import os
 import time
@@ -35,9 +36,11 @@ def generate(client, **request):
 SYSTEM_PROMPT = (
     "You are a professor helping a student understand a topic from their course. "
     "Tailor the explanation to the institution and course they give you. "
-    "After the explanation, write one practice problem as a 4-option multiple choice "
-    "question with options labeled A) through D), then explain the correct answer. "
-    "Write all math as LaTeX wrapped in double dollar signs, like $$x^2 + 1$$. "
+    "After the explanation, write one practice problem as a multiple choice question "
+    "with exactly 4 options. Put only the question in 'question' and the 4 options, "
+    "without letter labels, in 'options'. Then explain the correct answer. "
+    "Write all math as LaTeX wrapped in double dollar signs, like $$x^2 + 1$$, "
+    "everywhere including inside the options. "
     "Never use single dollar signs. Use plain text, not Markdown."
 )
 
@@ -45,6 +48,7 @@ SYSTEM_PROMPT = (
 class Lesson(BaseModel):
     explanation: str
     question: str
+    options: list[str]
     answer_explanation: str
     correct_letter: str
 
@@ -61,12 +65,14 @@ def video_links(topic):
         results = search_videos(topic)
     except Exception as e:
         print(f"YouTube search failed: {e}")
-        return ""
-    lines = [
-        f"https://www.youtube.com/watch?v={item['id']['videoId']} ({item['snippet']['title']})"
+        return []
+    return [
+        {
+            "url": f"https://www.youtube.com/watch?v={item['id']['videoId']}",
+            "title": html.unescape(item["snippet"]["title"]),
+        }
         for item in results.get("items", [])
     ]
-    return "(Extra Resources):\n" + "\n".join(lines) + "\n\n" if lines else ""
 
 
 def default_ai():
@@ -93,8 +99,11 @@ def default_ai():
 
     output = {
         "Response": {
-            "Explanation": f"{lesson.explanation}\n\n{video_links(topic)}",
+            "Topic": topic,
+            "Explanation": lesson.explanation,
+            "Videos": video_links(topic),
             "Question": lesson.question,
+            "Options": lesson.options,
             "Answer": lesson.answer_explanation,
             "correctAnswer": correct_answer,
         }

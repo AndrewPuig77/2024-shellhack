@@ -1,361 +1,421 @@
 package com.example.app;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import javafx.application.Platform;
+import javafx.beans.InvalidationListener;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.media.Media;
-import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaView;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
-import javafx.stage.Stage;
+import javafx.scene.text.TextFlow;
 
-import java.awt.*;
+import java.awt.Desktop;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 
 import org.scilab.forge.jlatexmath.TeXConstants;
 import org.scilab.forge.jlatexmath.TeXFormula;
 import org.scilab.forge.jlatexmath.TeXIcon;
-import javafx.scene.control.TextArea;
 
+//One controller shared by all three screens; each FXML only fills in the fields it uses
 public class HelloController implements Initializable {
+    private static final String OUTPUT_FILE = "src/SHELLHACKS_2024_PROJECT/output.json";
+    //LaTeX formulas are drawn in the same light color as the lesson text
+    private static final java.awt.Color MATH_COLOR = new java.awt.Color(232, 240, 252);
+
+    @FXML
+    private StackPane root;
     @FXML
     private MediaView mediaView;
-    private File file;
-    private Media media;
-    private MediaPlayer mediaPlayer;
-    private Stage stage;
-    private Scene scene;
-    private Parent root;
+
+    //Start screen
     @FXML
-    private TextField textBox1;
+    private TextField textBox1; //School
     @FXML
-    private TextField textBox2;
+    private TextField textBox2; //Course
     @FXML
-    private TextField textBox3;
+    private TextField textBox3; //Topic
     @FXML
-    private Button myButton;
+    private Label errorLabel;
     @FXML
-    private TextField textField2;
+    private VBox loadingOverlay;
+
+    //Lesson and practice screens
     @FXML
-    private TextArea outputTextArea;
+    private Label topicLabel;
     @FXML
-    private VBox dynamicContent;
+    private ScrollPane lessonScroll;
     @FXML
-    private VBox dynamicContent2;
+    private VBox lessonContent;
     @FXML
-    private AnchorPane anchorPane;
+    private TextField textField2; //Follow-up question
+    @FXML
+    private Button askButton;
+    @FXML
+    private VBox practiceContent;
+
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        MediaPlayer mediaPlayer = MediaPlayerManager.getInstance().getMediaPlayer();
-        mediaView.setMediaPlayer(mediaPlayer);
-    }
-    public void switchToScene1(ActionEvent event) throws IOException {
-        // Switch back to the first scene
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("hello-view.fxml"));
-        Parent root = loader.load();
-        Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-        stage.show();
-    }
-    public void switchToScene3(ActionEvent event) throws IOException {
-        // Switch back to the first scene
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("com/example/app/scene3.fxml"));
-        Parent root = loader.load();
-        Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-        stage.show();
-    }
-    private Parent scene2Root;
-    public void switchToScene2FromScene3(ActionEvent event) throws IOException {
-        if (scene2Root == null) {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("com/example/app/scene2.fxml"));
-            scene2Root = loader.load();
-
-            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            Scene scene = new Scene(scene2Root);
-            stage.setScene(scene);
-            stage.show();
+        playBackgroundVideo();
+        if (errorLabel != null) {
+            errorLabel.managedProperty().bind(errorLabel.textProperty().isNotEmpty()); //No gap when there's no error
+        }
+        if (lessonContent != null) {
+            showLesson();
+        }
+        if (practiceContent != null) {
+            showPractice();
         }
     }
 
+    public void switchToScene1(ActionEvent event) {
+        showScreen(event, "hello-view.fxml");
+    }
 
+    public void switchToScene3(ActionEvent event) {
+        showScreen(event, "scene3.fxml");
+    }
 
+    public void switchToScene2FromScene3(ActionEvent event) {
+        showScreen(event, "scene2.fxml");
+    }
 
-    public void switchToScene2(ActionEvent event) throws IOException {
-        VBox vbox = new VBox();
-        vbox.setSpacing(10);
+    //Start screen: save the inputs, generate a lesson, then open the lesson screen
+    public void switchToScene2(ActionEvent event) {
+        String school = textBox1.getText().trim();
+        String course = textBox2.getText().trim();
+        String topic = textBox3.getText().trim();
+        if (topic.isEmpty()) {
+            errorLabel.setText("Enter a topic to get started.");
+            return;
+        }
+        errorLabel.setText("");
 
-        String value1 = textBox1.getText();
-        String value2 = textBox2.getText();
-        String value3 = textBox3.getText();
-        JsonCreation json = new JsonCreation();
-        json.jsonCreate(value1, value2, value3);
-        String aiOutputFile = "src/SHELLHACKS_2024_PROJECT/output.json";
+        new JsonCreation().jsonCreate(school, course, topic);
+        Scene scene = root.getScene();
+        loadingOverlay.setVisible(true);
+        runInBackground("default.py",
+                () -> showScreen(scene, "scene2.fxml"),
+                () -> {
+                    loadingOverlay.setVisible(false);
+                    errorLabel.setText("Couldn't build a lesson. Check your API keys and internet connection, then try again.");
+                });
+    }
 
+    //Lesson screen: ask a follow-up and add the answer below the lesson
+    public void followUpInput(ActionEvent event) {
+        String question = textField2.getText().trim();
+        if (question.isEmpty()) {
+            return; //Nothing to ask
+        }
+        new JsonCreation().genJson(question);
+        textField2.clear();
+        setAsking(true);
 
+        Label asked = new Label(question);
+        asked.getStyleClass().add("bubble-text");
+        asked.setWrapText(true);
+        asked.setMaxWidth(560);
+        HBox bubble = new HBox(asked);
+        bubble.getStyleClass().add("question-bubble");
+        HBox row = new HBox(bubble);
+        row.setAlignment(Pos.CENTER_RIGHT);
+        Label thinking = new Label("Thinking...");
+        thinking.getStyleClass().add("thinking");
+        lessonContent.getChildren().addAll(row, thinking);
+        scrollToBottom();
 
-        try (FileReader reader = new FileReader("src/SHELLHACKS_2024_PROJECT/output.json")) {
-            //Parse JSON file into a Json Object
-            JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
+        runInBackground("followup.py",
+                () -> {
+                    lessonContent.getChildren().remove(thinking);
+                    JsonObject response = readResponse();
+                    if (response != null) {
+                        lessonContent.getChildren().add(section("Answer", mathText(text(response, "Output"))));
+                    }
+                    setAsking(false);
+                    scrollToBottom();
+                },
+                () -> {
+                    thinking.setText("Couldn't get an answer. Try asking again.");
+                    setAsking(false);
+                });
+    }
 
-            //Create a JsonObject of the response thorugh the Response key found in the Json AI Output File
-            JsonObject response = jsonObject.getAsJsonObject("Response");
+    private void showLesson() {
+        JsonObject response = readResponse();
+        if (response == null) {
+            return;
+        }
+        topicLabel.setText(text(response, "Topic"));
+        lessonContent.getChildren().add(section("Lesson", mathText(text(response, "Explanation"))));
 
-            //Extract values from "response" through keys from the Json file
-            String explanation = response.get("Explanation").getAsString();
-            String question = response.get("Question").getAsString();
-            String answer = response.get("Answer").getAsString();
-
-            //Split values extracted into tokens separated by two dollars signs
-            //$$ is a delimeter in LaTeX (typesetting system used to create mathematical expressions, equations, etc.)
-            String[] explanationBig = explanation.split("\\$\\$");//makes explanation tokens
-            String[] questionBig = question.split("\\$\\$");
-            String[] answerBig = answer.split("\\$\\$");
-
-
-
-            // Create a new Scene with the layout
-
-
-            //Iterate through tokens to see what is a math formula or not
-            //Convert to math image, then add to vbox
-            //If not formula, add normal text to vbox
-
-            int i = 0;
-            for (String explanationToken : explanationBig) {
-
-                if (i % 2 == 1) {
-
-                    ImageView mathImage = printImage(explanationToken);
-                    vbox.getChildren().add(mathImage);
-                } else {
-
-                    explanationToken = explanationToken.replace("$", ""); //Remove single dollar signs for simple math equations
-                    Text normalText = new Text(explanationToken);
-                    vbox.getChildren().add(normalText);
-                }
-                i++;
+        JsonArray videos = response.has("Videos") ? response.getAsJsonArray("Videos") : new JsonArray();
+        if (!videos.isEmpty()) {
+            VBox links = new VBox(6);
+            for (JsonElement element : videos) {
+                JsonObject video = element.getAsJsonObject();
+                String videoUrl = text(video, "url");
+                Hyperlink link = new Hyperlink("▶  " + text(video, "title"));
+                link.setWrapText(true);
+                link.setOnAction(e -> openInBrowser(videoUrl));
+                links.getChildren().add(link);
             }
-
-        } catch (IOException e){
-            System.out.println(e);
+            lessonContent.getChildren().add(section("Watch next", links));
         }
-
-
-
-
-
-
-
-
-        ProcessBuilder pb = new ProcessBuilder("src/SHELLHACKS_2024_PROJECT/default.exe");
-        Process p = pb.start();
-
-        Stage newWindow = new Stage();
-        newWindow.setTitle("New Window");
-
-        // Create a Label to display in the new window
-        Label label = new Label("This is a new window");
-
-        // Create a layout for the new window and add the label
-        StackPane layout = new StackPane();
-
-        //Add scroll pane to scene and set the stage
-
-        Scene scene = new Scene(vbox, 800, 800);
-
-        // Set the scene to the stage and show the new window
-        newWindow.setScene(scene);
-        newWindow.show();
-
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("scene2.fxml"));
-        Parent root2 = loader.load();
-        Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-        Scene scene2 = new Scene(root2);
-        stage.setScene(scene2);
-
-
-
-
-
     }
 
+    private void showPractice() {
+        JsonObject response = readResponse();
+        if (response == null) {
+            return;
+        }
+        topicLabel.setText(text(response, "Topic"));
+        practiceContent.getChildren().add(section("Question", mathText(text(response, "Question"))));
 
-    public void followUpInput(ActionEvent event)throws IOException{
-        JsonCreation json = new JsonCreation();
-        VBox vbox = new VBox();
-        vbox.setSpacing(10);
-        try (FileReader reader = new FileReader("src/SHELLHACKS_2024_PROJECT/output.json")) {
-            //Parse JSON file into a Json Object
-            JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
+        //Hidden until the student picks an answer
+        Label feedback = new Label();
+        VBox solution = section("Solution", mathText(text(response, "Answer")));
+        solution.getChildren().add(0, feedback);
+        setShown(solution, false);
 
-            //Create a JsonObject of the response thorugh the Response key found in the Json AI Output File
-            JsonObject response = jsonObject.getAsJsonObject("Response");
-            String inputText = textField2.getText(); // Get the text from the TextField
-            json.genJson(inputText);
-            String Output = response.get("Output").getAsString();
-            String[] OutputBig = Output.split("\\$\\$");
-            int j = 0;
-            for (String questionToken : OutputBig) {
-
-                if (j % 2 == 1) {
-                    ImageView mathImage = printImage(questionToken);
-                    vbox.getChildren().add(mathImage);
-                } else {
-                    questionToken = questionToken.replace("$", "");
-                    Text normalText = new Text(questionToken);
-                    vbox.getChildren().add(normalText);
+        int correct = response.has("correctAnswer") ? response.get("correctAnswer").getAsInt() : 0;
+        JsonArray options = response.has("Options") ? response.getAsJsonArray("Options") : new JsonArray();
+        //Each choice is a clickable card; a VBox lets the text wrap to the card's real width
+        List<VBox> buttons = new ArrayList<>();
+        for (int i = 0; i < options.size(); i++) {
+            int number = i + 1;
+            VBox option = new VBox(mathText((char) ('A' + i) + ")   " + options.get(i).getAsString()));
+            option.getStyleClass().add("option");
+            option.setOnMouseClicked(e -> {
+                buttons.forEach(b -> b.setDisable(true));
+                boolean right = number == correct;
+                if (correct >= 1 && correct <= buttons.size()) {
+                    buttons.get(correct - 1).getStyleClass().add("correct");
                 }
-                j++;//Iterate j to the next
-            }
-        }catch (IOException e){
-            System.out.println(e);
+                if (!right) {
+                    option.getStyleClass().add("wrong");
+                }
+                if (right) {
+                    feedback.setText("Correct!");
+                } else if (correct >= 1) {
+                    feedback.setText("Not quite. The answer is " + (char) ('A' + correct - 1) + ".");
+                } else {
+                    feedback.setText("Here's how to solve it.");
+                }
+                feedback.getStyleClass().setAll(right ? "feedback-correct" : "feedback-wrong");
+                setShown(solution, true);
+            });
+            buttons.add(option);
         }
 
+        VBox choices = new VBox(10);
+        choices.getChildren().addAll(buttons);
+        if (buttons.isEmpty()) {
+            //Lessons made before options were split out have them inside the question text
+            Button reveal = new Button("Show answer");
+            reveal.getStyleClass().add("primary");
+            reveal.setOnAction(e -> {
+                setShown(solution, true);
+                reveal.setDisable(true);
+            });
+            choices.getChildren().add(reveal);
+        }
+        practiceContent.getChildren().addAll(choices, solution);
+    }
 
-        ProcessBuilder pb = new ProcessBuilder("src/SHELLHACKS_2024_PROJECT/followup.exe");
+    //Scales the shared background video to cover the whole window, cropping the edges
+    private void playBackgroundVideo() {
+        if (mediaView == null || root == null) {
+            return;
+        }
+        mediaView.setMediaPlayer(MediaPlayerManager.getInstance().getMediaPlayer());
+        mediaView.setPreserveRatio(true);
+        InvalidationListener cover = o -> {
+            double width = root.getWidth();
+            double height = root.getHeight();
+            double scale = Math.max(width / 1920, height / 1080);
+            mediaView.setFitWidth(1920 * scale);
+            mediaView.setFitHeight(1080 * scale);
+            mediaView.setLayoutX((width - 1920 * scale) / 2);
+            mediaView.setLayoutY((height - 1080 * scale) / 2);
+        };
+        root.widthProperty().addListener(cover);
+        root.heightProperty().addListener(cover);
+        Rectangle clip = new Rectangle();
+        clip.widthProperty().bind(root.widthProperty());
+        clip.heightProperty().bind(root.heightProperty());
+        root.setClip(clip);
+    }
+
+    //Swaps the window's content instead of opening a new window
+    private void showScreen(ActionEvent event, String fxml) {
+        showScreen(((Node) event.getSource()).getScene(), fxml);
+    }
+
+    private void showScreen(Scene scene, String fxml) {
         try {
-            Process p = pb.start();
+            Parent next = FXMLLoader.load(getClass().getResource(fxml));
+            scene.setRoot(next);
         } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        Stage newWindow = new Stage();
-        newWindow.setTitle("New Window");
-
-        // Create a Label to display in the new window
-        
-
-        // Create a layout for the new window and add the label
-
-
-        //Add scroll pane to scene and set the stage
-
-        Scene scene = new Scene(vbox, 800, 800);
-
-        // Set the scene to the stage and show the new window
-        newWindow.setScene(scene);
-        newWindow.show();
-
-
-
-                // Implement your logic here, e.g., process the input or clear the field
-        textField2.clear(); // Example of clearing the TextField after pressing Enter
-    }
-    public void loadJsonContent() {
-        // Path to JSON file
-        String aiOutputFile = "SHELLHACKS_2024_PROJECT/output.json";
-
-        // StringBuilder to accumulate all the output content
-        StringBuilder output = new StringBuilder();
-
-        try (FileReader reader = new FileReader(aiOutputFile)) {
-            // Parse JSON file into a JsonObject
-            JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
-
-            // Create a JsonObject of the response through the Response key found in the Json AI Output File
-            JsonObject response = jsonObject.getAsJsonObject("Response");
-
-            // Extract values from "response" through keys from the Json file
-            String explanation = response.get("Explanation").getAsString();
-            String question = response.get("Question").getAsString();
-            String answer = response.get("Answer").getAsString();
-
-            // Append the explanation, question, and answer content to the StringBuilder
-            processTokens(output, explanation.split("\\$\\$"));
-            processTokens(output, question.split("\\$\\$"));
-            processTokens(output, answer.split("\\$\\$"));
-
-            // Set the accumulated content into the TextArea
-            outputTextArea.setText(output.toString());
-
-        } catch (IOException e) {
-            System.out.println(e);
+            throw new UncheckedIOException(e);
         }
     }
 
-     //Helper method to process tokens and append them to the StringBuilder
-    private void processTokens(StringBuilder output, String[] tokens) {
-        int i = 0;
-        for (String token : tokens) {
-            if (i % 2 == 1) {
-                // Handle formulas differently, for now, append LaTeX formula placeholders
-                output.append("[Formula: ").append(token).append("]").append("\n");
-            } else {
-                // Append normal text
-                output.append(token.replace("$", "")).append("\n");  // Remove single dollar signs for simple math equations
+    private void setAsking(boolean asking) {
+        textField2.setDisable(asking);
+        askButton.setDisable(asking);
+    }
+
+    private void scrollToBottom() {
+        Platform.runLater(() -> {
+            lessonScroll.layout();
+            lessonScroll.setVvalue(1.0);
+        });
+    }
+
+    //Runs an AI script off the UI thread so the window stays responsive
+    private void runInBackground(String script, Runnable onSuccess, Runnable onFailure) {
+        Thread worker = new Thread(() -> {
+            boolean succeeded = runPythonScript(script);
+            Platform.runLater(succeeded ? onSuccess : onFailure);
+        });
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    //Runs one of the AI scripts and waits for it to finish writing output.json
+    private static boolean runPythonScript(String script) {
+        //Prefer the project's virtual environment, which has the AI libraries installed
+        String venvPython = ".venv/Scripts/python.exe";
+        String python = new File(venvPython).exists() ? venvPython : "python";
+        ProcessBuilder pb = new ProcessBuilder(python, "src/SHELLHACKS_2024_PROJECT/" + script);
+        pb.inheritIO(); //Show the script's output and errors in the console
+        try {
+            int exitCode = pb.start().waitFor();
+            if (exitCode != 0) {
+                System.out.println(script + " failed with exit code " + exitCode);
             }
-            i++;
+            return exitCode == 0;
+        } catch (IOException e) {
+            System.out.println("Couldn't run " + script + ": " + e);
+            return false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
-     //Converts LaTeX to image
+
+    private static JsonObject readResponse() {
+        try (FileReader reader = new FileReader(OUTPUT_FILE)) {
+            return JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("Response");
+        } catch (Exception e) {
+            System.out.println("Couldn't read " + OUTPUT_FILE + ": " + e);
+            return null;
+        }
+    }
+
+    private static String text(JsonObject object, String key) {
+        JsonElement value = object.get(key);
+        return value == null || value.isJsonNull() ? "" : value.getAsString();
+    }
+
+    //A card with a small heading, used for each block of the lesson
+    private static VBox section(String title, Node body) {
+        Label heading = new Label(title.toUpperCase());
+        heading.getStyleClass().add("section-title");
+        VBox box = new VBox(heading, body);
+        box.getStyleClass().add("section");
+        return box;
+    }
+
+    //Splits text on $$ (the LaTeX delimiter) so formulas render as images inline with the words
+    private static TextFlow mathText(String content) {
+        TextFlow flow = new TextFlow();
+        String[] tokens = content.split("\\$\\$");
+        for (int i = 0; i < tokens.length; i++) {
+            if (i % 2 == 1) {
+                flow.getChildren().add(printImage(tokens[i]));
+            } else {
+                Text normalText = new Text(tokens[i].replace("$", "")); //Remove single dollar signs for simple math equations
+                normalText.getStyleClass().add("lesson-text");
+                flow.getChildren().add(normalText);
+            }
+        }
+        return flow;
+    }
+
+    private static void setShown(Node node, boolean shown) {
+        node.setVisible(shown);
+        node.setManaged(shown);
+    }
+
+    private static void openInBrowser(String url) {
+        new Thread(() -> {
+            try {
+                Desktop.getDesktop().browse(URI.create(url));
+            } catch (Exception e) {
+                System.out.println("Couldn't open " + url + ": " + e);
+            }
+        }).start();
+    }
+
+    //Converts LaTeX to an image, drawn at 2x so it stays sharp on high-DPI screens
     public static ImageView printImage(String mathExpression) {
         try {
             TeXFormula formula = new TeXFormula(mathExpression);
-            TeXIcon formulaIcon = formula.createTeXIcon(TeXConstants.STYLE_DISPLAY, 20);
+            TeXIcon formulaIcon = formula.createTeXIcon(TeXConstants.STYLE_TEXT, 38);
+            formulaIcon.setForeground(MATH_COLOR);
 
             BufferedImage bufferedImage = new BufferedImage(
-                    formulaIcon.getIconWidth(),
-                    formulaIcon.getIconHeight(),
+                    Math.max(1, formulaIcon.getIconWidth()),
+                    Math.max(1, formulaIcon.getIconHeight()),
                     BufferedImage.TYPE_INT_ARGB
             );
-
             Graphics2D iconGraphics = bufferedImage.createGraphics();
-            iconGraphics.setColor(Color.WHITE);
-            iconGraphics.fillRect(0, 0, bufferedImage.getWidth(), bufferedImage.getHeight());
+            iconGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            iconGraphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             formulaIcon.paintIcon(null, iconGraphics, 0, 0);
             iconGraphics.dispose();
 
-            Image fxImage = SwingFXUtils.toFXImage(bufferedImage, null);
-            return new ImageView(fxImage);
+            ImageView image = new ImageView(SwingFXUtils.toFXImage(bufferedImage, null));
+            image.setFitWidth(bufferedImage.getWidth() / 2.0);
+            image.setPreserveRatio(true);
+            image.setSmooth(true);
+            image.setTranslateY(formulaIcon.getIconDepth() / 2.0); //Line the formula's baseline up with the text
+            return image;
         } catch (Exception e) {
             System.out.println("Error creating LaTeX image: " + e);
             return new ImageView(); // Return empty ImageView on error
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
