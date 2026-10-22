@@ -1,82 +1,71 @@
-from openai import OpenAI
-import os
-from dotenv import load_dotenv
 import json
-from googleapiclient.discovery import build
-load_dotenv()
+import os
+import time
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-with open("SHELLHACKS_2024_PROJECT\input.json", "r+") as input:
-    data = json.load(input)
-    school = data["School"]
-    course = data["Course"]
-    topic = data['Topic']
+from dotenv import load_dotenv
+from google import genai
+from google.genai import errors, types
 
-def search_videos(query):
-    youtube = build('youtube', 'v3', developerKey=os.getenv("GOOGLE_API_KEY"))
-    request = youtube.search().list(part='snippet', type='video', q=query, maxResults=3)
-    response = request.execute()
-    return response
+# Files live next to this script, so it works no matter where it's launched from
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+INPUT_FILE = os.path.join(BASE_DIR, "input.json")
+OUTPUT_FILE = os.path.join(BASE_DIR, "output.json")
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-def default_ai():
-    completion = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a professor who is aiding students in their desired topics in order for them to better understand it please refer to the institution and course they provided. After an explanation work out a practice problem and make the answer of the problem a choice in a 4 option multiple choice for that practice problem. Make sure the explanation, multiple choice question, and the answer explanation are seperated by 'spc' and all '\' should be replaced by '$' for easier formatting. Also seperated by 'spc' put the letter of the answer alone at the bottom"},
-            {
-                "role": "user",
-                "content": f"Institution: {school} | Course: {course} | Topic: {topic}"
-            } 
-        ]
-    )
-    output = completion.choices[0].message.content.split("spc")
-
-    results = search_videos(topic)
-    videos = []
-    for i in range(len(results["items"])):
-        videos.append((f"https://www.youtube.com/watch?v={results['items'][i]['id']['videoId']}", results["items"][i]['snippet']['title']))
+# Free-tier models sometimes return 503 under load, so try these in order
+MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"]
 
 
-    with open("SHELLHACKS_2024_PROJECT\output.json", "r+") as file:
-        data = json.load(file)
-        data['Response']['Explanation'] = f"{output[0]}(Extra Resources): {videos[0][0]} ({videos[0][-1]})\n{videos[1][0]} ({videos[1][-1]})\n{videos[-1][0]} ({videos[-1][-1]})\n\n"
-        data['Response']['Question'] = output[1]
-        data['Response']['Answer'] = output[2]
-        if output[-1][-1].lower() == 'a':
-            output[-1] = 1
-        elif output[-1][-1].lower() == 'b':
-            output[-1] = 2
-        elif output[-1][-1].lower() == 'c':
-            output[-1] = 3
-        elif output[-1][-1].lower() == 'd':
-            output[-1] = 4
-        else:
-            output[-1] = 0
-        data['Response']['correctAnswer'] = output[-1]
-        file.seek(0)
-        file.truncate(0)
-        file.write(json.dumps(data))
-    return output[0]
+def generate(client, **request):
+    # Two passes over the list, with a short pause, before giving up
+    attempts = MODELS + MODELS
+    for i, model in enumerate(attempts):
+        try:
+            return client.models.generate_content(model=model, **request)
+        except errors.ServerError as e:
+            if i == len(attempts) - 1:
+                raise
+            print(f"{model} unavailable, trying next model: {e}")
+            if i == len(MODELS) - 1:
+                time.sleep(5)
+
+
+SYSTEM_PROMPT = (
+    "You are a professor helping a student understand a topic from their course. "
+    "They have read your earlier lesson and practice problem and now have a follow-up "
+    "question. Answer it clearly, referring back to the lesson where it helps. "
+    "Write all math as LaTeX wrapped in double dollar signs, like $$x^2 + 1$$. "
+    "Never use single dollar signs. Use plain text, not Markdown."
+)
+
 
 def followup_ai():
-    with open("SHELLHACKS_2024_PROJECT\input.json", "r+") as input:
-        data = json.load(input)
-        input = data["Input"]
-        completion = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a professor who is aiding students in their desired topics in order for them to better understand it. You are here to help them interpret your past responses to their questions and follow up on any more questions they have make sure that all '\' in your response should be replaced by '$' for easier formatting."},
-                {
-                    "role": "user",
-                    "content": f"You responded with {default_ai()}, they are asking now '{input}'"
-                } 
-            ]
-        )
-        output = completion.choices[0].message.content
+    with open(INPUT_FILE, "r") as f:
+        question = json.load(f)["Input"]
 
-        with open("SHELLHACKS_2024_PROJECT\output.json", "r+") as file:
-            data = json.load(file)
-            data["output"] = output
+    # The previous lesson is still in output.json from default.py
+    with open(OUTPUT_FILE, "r") as f:
+        data = json.load(f)
+    previous = data.get("Response", {})
+    lesson = (
+        f"Explanation:\n{previous.get('Explanation', '')}\n\n"
+        f"Practice problem:\n{previous.get('Question', '')}\n\n"
+        f"Answer:\n{previous.get('Answer', '')}"
+    )
+
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    request = dict(
+        contents=f"Your earlier lesson:\n{lesson}\n\nThe student now asks: {question}",
+        config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
+    )
+    response = generate(client, **request)
+    output = response.text
+
+    data.setdefault("Response", {})["Output"] = output
+    with open(OUTPUT_FILE, "w") as f:
+        json.dump(data, f)
     return output
 
-followup_ai()
+
+if __name__ == "__main__":
+    followup_ai()

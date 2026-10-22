@@ -1,0 +1,4 @@
+google-genai
+google-api-python-client
+python-dotenv
+pydantic
