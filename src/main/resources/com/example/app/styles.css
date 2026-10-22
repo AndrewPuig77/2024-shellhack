@@ -305,6 +305,30 @@
     -fx-padding: 14 0 0 0;
 }
 
+/* Quiz results */
+.quiz-score {
+    -fx-text-fill: white;
+    -fx-font-size: 46px;
+    -fx-font-weight: bold;
+}
+
+.result-right {
+    -fx-text-fill: #4ade80;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+.result-wrong {
+    -fx-text-fill: #f87171;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+.result-note {
+    -fx-text-fill: -muted;
+    -fx-font-size: 13px;
+}
+
 .feedback-correct {
     -fx-text-fill: #4ade80;
     -fx-font-size: 20px;

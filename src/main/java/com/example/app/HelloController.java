@@ -23,6 +23,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaView;
@@ -51,13 +52,14 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.scilab.forge.jlatexmath.TeXConstants;
 import org.scilab.forge.jlatexmath.TeXFormula;
 import org.scilab.forge.jlatexmath.TeXIcon;
 
-//One controller shared by all three screens; each FXML only fills in the fields it uses
+//One controller shared by every screen; each FXML only fills in the fields it uses
 public class HelloController implements Initializable {
     private static final String OUTPUT_FILE = "src/SHELLHACKS_2024_PROJECT/output.json";
     //A copy of every lesson, saved by the Python scripts, for the Recent lessons list
@@ -105,9 +107,17 @@ public class HelloController implements Initializable {
     @FXML
     private Label scoreLabel;
 
+    @FXML
+    private VBox quizContent;
+
     //Practice score for the current lesson; shared across screens, reset on a new lesson
     private static int questionsAnswered = 0;
     private static int questionsCorrect = 0;
+
+    //Quiz progress: which question is showing, how many were right, and each pick (1-4)
+    private static int quizIndex = 0;
+    private static int quizCorrect = 0;
+    private static final List<Integer> quizPicks = new ArrayList<>();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -123,6 +133,9 @@ public class HelloController implements Initializable {
         }
         if (practiceContent != null) {
             showPractice();
+        }
+        if (quizContent != null) {
+            showQuiz();
         }
     }
 
@@ -335,47 +348,20 @@ public class HelloController implements Initializable {
 
         int correct = response.has("correctAnswer") ? response.get("correctAnswer").getAsInt() : 0;
         JsonArray options = response.has("Options") ? response.getAsJsonArray("Options") : new JsonArray();
-        //Each choice is a clickable card; a VBox lets the text wrap to the card's real width
-        List<VBox> buttons = new ArrayList<>();
-        for (int i = 0; i < options.size(); i++) {
-            int number = i + 1;
-            VBox option = new VBox(mathText((char) ('A' + i) + ")   " + options.get(i).getAsString()));
-            option.getStyleClass().add("option");
-            option.setOnMouseClicked(e -> {
-                buttons.forEach(b -> b.setDisable(true));
-                boolean right = number == correct;
-                questionsAnswered++;
-                if (right) {
-                    questionsCorrect++;
-                }
-                updateScore();
-                if (correct >= 1 && correct <= buttons.size()) {
-                    buttons.get(correct - 1).getStyleClass().add("correct");
-                }
-                if (!right) {
-                    option.getStyleClass().add("wrong");
-                }
-                if (right) {
-                    feedback.setText("Correct!");
-                } else if (correct >= 1) {
-                    feedback.setText("Not quite. The answer is " + (char) ('A' + correct - 1) + ".");
-                } else {
-                    feedback.setText("Here's how to solve it.");
-                }
-                feedback.getStyleClass().setAll(right ? "feedback-correct" : "feedback-wrong");
-                if (!right && correct >= 1) {
-                    //Above the Easier / Next / Harder buttons, which are always last
-                    solution.getChildren().add(solution.getChildren().size() - 1,
-                            whyWrongBox((char) ('A' + number - 1)));
-                }
-                setShown(solution, true);
-            });
-            buttons.add(option);
-        }
-
-        VBox choices = new VBox(10);
-        choices.getChildren().addAll(buttons);
-        if (buttons.isEmpty()) {
+        VBox choices = answerChoices(options, correct, (picked, right) -> {
+            questionsAnswered++;
+            if (right) {
+                questionsCorrect++;
+            }
+            updateScore();
+            setFeedback(feedback, right, correct);
+            if (!right && correct >= 1) {
+                //Above the Easier / Next / Harder buttons, which are always last
+                solution.getChildren().add(solution.getChildren().size() - 1, whyWrongBox(letter(picked)));
+            }
+            setShown(solution, true);
+        });
+        if (options.isEmpty()) {
             //Lessons made before options were split out have them inside the question text
             Button reveal = new Button("Show answer");
             reveal.getStyleClass().add("primary");
@@ -387,6 +373,166 @@ public class HelloController implements Initializable {
         }
         solution.getChildren().add(nextQuestionButtons());
         practiceContent.getChildren().addAll(choices, solution);
+    }
+
+    //Four clickable answer cards. On a pick they lock, the right one turns green (and the pick red
+    //if it was wrong), then onPicked gets the picked number (1-4) and whether it was right.
+    private static VBox answerChoices(JsonArray options, int correct, BiConsumer<Integer, Boolean> onPicked) {
+        List<VBox> cards = new ArrayList<>();
+        for (int i = 0; i < options.size(); i++) {
+            int number = i + 1;
+            //A VBox lets the text wrap to the card's real width
+            VBox option = new VBox(mathText(letter(number) + ")   " + options.get(i).getAsString()));
+            option.getStyleClass().add("option");
+            option.setOnMouseClicked(e -> {
+                cards.forEach(card -> card.setDisable(true));
+                boolean right = number == correct;
+                if (correct >= 1 && correct <= cards.size()) {
+                    cards.get(correct - 1).getStyleClass().add("correct");
+                }
+                if (!right) {
+                    option.getStyleClass().add("wrong");
+                }
+                onPicked.accept(number, right);
+            });
+            cards.add(option);
+        }
+        VBox choices = new VBox(10);
+        choices.getChildren().addAll(cards);
+        return choices;
+    }
+
+    private static void setFeedback(Label feedback, boolean right, int correct) {
+        if (right) {
+            feedback.setText("Correct!");
+        } else if (correct >= 1) {
+            feedback.setText("Not quite. The answer is " + letter(correct) + ".");
+        } else {
+            feedback.setText("Here's how to solve it.");
+        }
+        feedback.getStyleClass().setAll(right ? "feedback-correct" : "feedback-wrong");
+    }
+
+    //1 -> 'A', 2 -> 'B', ...
+    private static char letter(int number) {
+        return (char) ('A' + number - 1);
+    }
+
+    //Lesson screen: generate a 5-question quiz, then open the quiz screen
+    public void startQuiz(ActionEvent event) {
+        generateQuiz(root.getScene());
+    }
+
+    private void generateQuiz(Scene scene) {
+        errorLabel.setText("");
+        loadingOverlay.setVisible(true);
+        runInBackground(List.of("quiz.py"),
+                () -> {
+                    quizIndex = 0;
+                    quizCorrect = 0;
+                    quizPicks.clear();
+                    showScreen(scene, "quiz.fxml");
+                },
+                message -> {
+                    loadingOverlay.setVisible(false);
+                    errorLabel.setText("Couldn't make a quiz. " + message);
+                });
+    }
+
+    //Quiz screen: the current question, or the results once all are answered
+    private void showQuiz() {
+        quizContent.getChildren().clear();
+        JsonObject response = readResponse();
+        JsonArray quiz = response != null && response.has("Quiz") ? response.getAsJsonArray("Quiz") : new JsonArray();
+        if (response != null) {
+            topicLabel.setText(text(response, "Topic"));
+        }
+        if (quiz.isEmpty()) {
+            errorLabel.setText("No quiz found for this lesson. Go back and press Quiz me.");
+            return;
+        }
+        if (quizIndex >= quiz.size()) {
+            showQuizResults(quiz);
+            return;
+        }
+
+        scoreLabel.setText("Question " + (quizIndex + 1) + " of " + quiz.size());
+        JsonObject question = quiz.get(quizIndex).getAsJsonObject();
+        int correct = question.get("correctAnswer").getAsInt();
+        quizContent.getChildren().add(section("Question " + (quizIndex + 1), mathText(text(question, "Question"))));
+
+        Label feedback = new Label();
+        VBox solution = section("Solution", mathText(text(question, "Answer")));
+        solution.getChildren().add(0, feedback);
+        boolean last = quizIndex == quiz.size() - 1;
+        Button next = new Button(last ? "See results" : "Next question →");
+        next.getStyleClass().add("primary");
+        next.setOnAction(e -> {
+            quizIndex++;
+            showQuiz();
+            practiceScroll.setVvalue(0);
+        });
+        HBox actions = new HBox(next);
+        actions.getStyleClass().add("practice-actions");
+        solution.getChildren().add(actions);
+        setShown(solution, false);
+
+        VBox choices = answerChoices(question.getAsJsonArray("Options"), correct, (picked, right) -> {
+            quizPicks.add(picked);
+            if (right) {
+                quizCorrect++;
+            }
+            setFeedback(feedback, right, correct);
+            setShown(solution, true);
+        });
+        quizContent.getChildren().addAll(choices, solution);
+    }
+
+    private void showQuizResults(JsonArray quiz) {
+        scoreLabel.setText("Score  " + quizCorrect + " / " + quiz.size());
+        Label score = new Label(quizCorrect + " / " + quiz.size());
+        score.getStyleClass().add("quiz-score");
+        double ratio = (double) quizCorrect / quiz.size();
+        Label message = new Label(ratio == 1 ? "Perfect score!"
+                : ratio >= 0.6 ? "Nice work. Review the ones you missed below."
+                : "Worth another look. Check the lesson, then retake the quiz.");
+        message.getStyleClass().add("subtitle");
+        quizContent.getChildren().add(section("Your score", new VBox(4, score, message)));
+
+        //One row per question: check or cross, the question, and the right answer if missed
+        VBox review = new VBox(12);
+        for (int i = 0; i < quiz.size(); i++) {
+            JsonObject question = quiz.get(i).getAsJsonObject();
+            int correct = question.get("correctAnswer").getAsInt();
+            int picked = i < quizPicks.size() ? quizPicks.get(i) : 0;
+            boolean right = picked == correct;
+            Label mark = new Label(right ? "✓" : "✗");
+            mark.getStyleClass().add(right ? "result-right" : "result-wrong");
+            mark.setMinWidth(Region.USE_PREF_SIZE); //Otherwise long questions squeeze the ✗ into "..."
+            VBox details = new VBox(4, mathText((i + 1) + ".  " + text(question, "Question")));
+            if (!right && correct >= 1) {
+                Label answer = new Label("You picked " + letter(picked) + ", the answer is " + letter(correct) + ".");
+                answer.getStyleClass().add("result-note");
+                details.getChildren().add(answer);
+            }
+            HBox.setHgrow(details, Priority.ALWAYS);
+            review.getChildren().add(new HBox(14, mark, details));
+        }
+        quizContent.getChildren().add(section("Review", review));
+
+        Button retake = new Button("Retake this quiz");
+        retake.setOnAction(e -> {
+            quizIndex = 0;
+            quizCorrect = 0;
+            quizPicks.clear();
+            showQuiz();
+            practiceScroll.setVvalue(0);
+        });
+        Button fresh = new Button("New quiz");
+        fresh.getStyleClass().add("primary");
+        fresh.setOnAction(e -> generateQuiz(root.getScene()));
+        HBox actions = new HBox(10, fresh, retake);
+        quizContent.getChildren().add(actions);
     }
 
     //"Why is B wrong?" after a wrong answer: asks Gemini about the student's specific choice.
