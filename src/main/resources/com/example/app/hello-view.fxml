@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.media.MediaView?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/23" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.app.HelloController">
+   <children>
+      <MediaView fx:id="mediaView" fitHeight="4000.0" fitWidth="3500.0" layoutX="-659.0" layoutY="-662.0" AnchorPane.bottomAnchor="-2238.0" AnchorPane.leftAnchor="-659.0" AnchorPane.rightAnchor="-2041.0" AnchorPane.topAnchor="-662.0" />
+      <VBox alignment="CENTER" fillWidth="false" layoutX="253.14285714285714" layoutY="354.2857142857143" prefHeight="63.0" prefWidth="292.0" style="-fx-background-color: transparent;" AnchorPane.bottomAnchor="183.0" AnchorPane.leftAnchor="253.0" AnchorPane.rightAnchor="255.0" AnchorPane.topAnchor="354.0">
+         <children>
+            <Label prefHeight="40.0" prefWidth="74.0" text="Topic" textFill="WHITE">
+               <font>
+                  <Font name="Modern No. 20" size="24.0" />
+               </font>
+            </Label>
+            <TextField fx:id="textBox3" alignment="CENTER" focusTraversable="true" prefHeight="27.0" prefWidth="205.0" VBox.vgrow="NEVER" />
+         </children>
+      </VBox>
+      <VBox alignment="CENTER" fillWidth="false" layoutX="264.0" layoutY="186.28571428571428" prefHeight="79.0" prefWidth="275.0" style="-fx-background-color: transparent;" AnchorPane.bottomAnchor="335.0" AnchorPane.leftAnchor="264.0" AnchorPane.rightAnchor="261.0" AnchorPane.topAnchor="186.0">
+         <children>
+            <Label prefHeight="34.0" prefWidth="84.0" text="Course" textFill="WHITE">
+               <font>
+                  <Font name="Modern No. 20" size="24.0" />
+               </font>
+            </Label>
+            <TextField fx:id="textBox2" alignment="CENTER" prefHeight="27.0" prefWidth="205.0" VBox.vgrow="NEVER" />
+         </children>
+      </VBox>
+      <HBox alignment="CENTER" fillHeight="false" layoutX="-1.0" layoutY="457.0" prefHeight="94.0" prefWidth="800.0" style="-fx-background-color: transparent;" AnchorPane.bottomAnchor="49.28571428571422" AnchorPane.leftAnchor="-1.0" AnchorPane.rightAnchor="1.5714285714286689" AnchorPane.topAnchor="457.0">
+         <children>
+            <Button mnemonicParsing="false" onAction="#switchToScene2" prefHeight="28.0" prefWidth="74.0" text="Submit" textFill="#060000" />
+         </children>
+      </HBox>
+      <VBox alignment="CENTER" fillWidth="false" layoutX="258.2857142857143" layoutY="261.14285714285717" prefHeight="94.0" prefWidth="282.0" style="-fx-background-color: transparent;" AnchorPane.bottomAnchor="245.0" AnchorPane.leftAnchor="258.0" AnchorPane.rightAnchor="260.0" AnchorPane.topAnchor="261.0">
+         <children>
+            <Label prefHeight="35.0" prefWidth="185.0" text="School/Institution" textFill="WHITE">
+               <font>
+                  <Font name="Modern No. 20" size="24.0" />
+               </font>
+            </Label>
+            <TextField fx:id="textBox1" alignment="CENTER" focusTraversable="true" prefHeight="27.0" prefWidth="206.0" VBox.vgrow="NEVER" />
+         </children>
+      </VBox>
+      <HBox alignment="CENTER" fillHeight="false" layoutX="254.0" layoutY="14.0" prefHeight="83.0" prefWidth="292.0" AnchorPane.bottomAnchor="502.2857142857142" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="14.0">
+         <children>
+            <Label prefHeight="83.0" prefWidth="301.0" text="uHackEDU" textFill="WHITE" HBox.hgrow="NEVER">
+               <font>
+                  <Font name="Modern No. 20" size="56.0" />
+               </font>
+            </Label>
+         </children>
+      </HBox>
+      <HBox alignment="CENTER" fillHeight="false" layoutX="322.2857142857143" layoutY="79.0" prefHeight="38.0" prefWidth="157.0" AnchorPane.bottomAnchor="483.0" AnchorPane.leftAnchor="322.0" AnchorPane.rightAnchor="321.0" AnchorPane.topAnchor="79.0">
+         <children>
+            <Label prefHeight="38.0" prefWidth="122.0" text="Welcome" textFill="WHITE" HBox.hgrow="NEVER">
+               <font>
+                  <Font name="Modern No. 20" size="28.0" />
+               </font>
+            </Label>
+         </children>
+      </HBox>
+      <HBox alignment="CENTER" fillHeight="false" layoutX="226.28571428571428" layoutY="147.0" prefHeight="38.0" prefWidth="333.0" AnchorPane.bottomAnchor="415.0" AnchorPane.leftAnchor="226.0" AnchorPane.rightAnchor="241.0" AnchorPane.topAnchor="147.0">
+         <children>
+            <Label text="Fill in the following boxes to begin learning" textFill="WHITE" HBox.hgrow="NEVER">
+               <font>
+                  <Font name="Modern No. 20" size="18.0" />
+               </font>
+            </Label>
+         </children>
+      </HBox>
+   </children>
+</AnchorPane>
