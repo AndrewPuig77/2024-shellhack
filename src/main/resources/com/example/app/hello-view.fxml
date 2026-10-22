@@ -10,45 +10,58 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.media.MediaView?>
 
-<!-- Start screen: pick a school, course and topic -->
+<!-- Start screen: pick a school, course and topic, or reopen a recent lesson -->
 <StackPane fx:id="root" xmlns="http://javafx.com/javafx/23" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.app.HelloController">
    <children>
       <MediaView fx:id="mediaView" managed="false" />
       <Region styleClass="scrim" />
 
-      <VBox styleClass="card" maxWidth="460.0" maxHeight="-Infinity">
+      <HBox alignment="CENTER" spacing="20.0" maxWidth="-Infinity" maxHeight="-Infinity">
          <children>
-            <HBox alignment="CENTER">
+            <VBox styleClass="card" prefWidth="460.0">
                <children>
-                  <Label styleClass="brand" text="uHack" />
-                  <Label styleClass="brand,brand-accent" text="EDU" />
-               </children>
-            </HBox>
-            <Label styleClass="subtitle" text="Your AI study buddy. Tell us what you're learning and get a lesson, videos and a practice problem." wrapText="true" textAlignment="CENTER" maxWidth="Infinity" alignment="CENTER" />
+                  <HBox alignment="CENTER">
+                     <children>
+                        <Label styleClass="brand" text="uHack" />
+                        <Label styleClass="brand,brand-accent" text="EDU" />
+                     </children>
+                  </HBox>
+                  <Label styleClass="subtitle" text="Your AI study buddy. Tell us what you're learning and get a lesson, videos and a practice problem." wrapText="true" textAlignment="CENTER" maxWidth="Infinity" alignment="CENTER" />
 
-            <VBox spacing="6.0">
-               <children>
-                  <Label styleClass="field-label" text="Topic" />
-                  <TextField fx:id="textBox3" promptText="e.g. Derivatives using the power rule" />
-               </children>
-            </VBox>
-            <VBox spacing="6.0">
-               <children>
-                  <Label styleClass="field-label" text="Course" />
-                  <TextField fx:id="textBox2" promptText="e.g. Calculus I" />
-               </children>
-            </VBox>
-            <VBox spacing="6.0">
-               <children>
-                  <Label styleClass="field-label" text="School / Institution" />
-                  <TextField fx:id="textBox1" promptText="e.g. Florida International University" />
+                  <VBox spacing="6.0">
+                     <children>
+                        <Label styleClass="field-label" text="Topic" />
+                        <TextField fx:id="textBox3" promptText="e.g. Derivatives using the power rule" />
+                     </children>
+                  </VBox>
+                  <VBox spacing="6.0">
+                     <children>
+                        <Label styleClass="field-label" text="Course" />
+                        <TextField fx:id="textBox2" promptText="e.g. Calculus I" />
+                     </children>
+                  </VBox>
+                  <VBox spacing="6.0">
+                     <children>
+                        <Label styleClass="field-label" text="School / Institution" />
+                        <TextField fx:id="textBox1" promptText="e.g. Florida International University" />
+                     </children>
+                  </VBox>
+
+                  <Label fx:id="errorLabel" styleClass="error" wrapText="true" />
+                  <Button styleClass="primary" text="Start learning" maxWidth="Infinity" defaultButton="true" onAction="#switchToScene2" />
                </children>
             </VBox>
 
-            <Label fx:id="errorLabel" styleClass="error" wrapText="true" />
-            <Button styleClass="primary" text="Start learning" maxWidth="Infinity" defaultButton="true" onAction="#switchToScene2" />
+            <!-- Filled in by the controller; hidden until there are saved lessons -->
+            <VBox fx:id="recentCard" styleClass="card,recent-card" prefWidth="300.0" visible="false" managed="false">
+               <children>
+                  <Label styleClass="section-title" text="RECENT LESSONS" />
+                  <Label styleClass="subtitle" text="Reopen one instantly. It doesn't use any Gemini requests." wrapText="true" />
+                  <VBox fx:id="recentList" spacing="8.0" />
+               </children>
+            </VBox>
          </children>
-      </VBox>
+      </HBox>
 
       <VBox fx:id="loadingOverlay" styleClass="loading" alignment="CENTER" visible="false">
          <children>

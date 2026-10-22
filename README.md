@@ -13,6 +13,7 @@ Originally built at ShellHacks 2024 by the team at
 - **Videos**: three related YouTube videos as thumbnail cards
 - **Follow-up questions** in a chat-style thread under the lesson
 - **Practice problems** with instant feedback, Easier / Next / Harder, and a score
+- **Recent lessons** on the start screen: reopen one instantly without using a Gemini request
 
 ## Setup
 
@@ -60,7 +61,8 @@ app runs in the background:
 | `practice.py` | Writes a new practice question (`same`, `easier` or `harder`). |
 
 They talk through two JSON files next to the scripts: `input.json` (what you typed) and
-`output.json` (the current lesson). Both are created automatically and gitignored.
+`output.json` (the current lesson). Every lesson is also saved in `lessons/` for the Recent
+lessons list. All of these are created automatically and gitignored.
 
 ## Free tier limits
 

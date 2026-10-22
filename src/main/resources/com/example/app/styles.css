@@ -54,6 +54,38 @@
     -fx-text-fill: #fca5a5;
 }
 
+/* Recent lessons list on the start screen */
+.recent-card {
+    -fx-padding: 28 24;
+    -fx-spacing: 12;
+}
+
+.recent-item {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 10;
+    -fx-border-color: -line;
+    -fx-border-radius: 10;
+    -fx-padding: 10 14;
+    -fx-spacing: 2;
+    -fx-cursor: hand;
+}
+
+.recent-item:hover {
+    -fx-background-color: rgba(56, 189, 248, 0.12);
+    -fx-border-color: -accent;
+}
+
+.recent-topic {
+    -fx-text-fill: -text;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.recent-meta {
+    -fx-text-fill: -muted;
+    -fx-font-size: 12px;
+}
+
 .loading {
     -fx-background-color: rgba(3, 7, 18, 0.78);
     -fx-spacing: 14;

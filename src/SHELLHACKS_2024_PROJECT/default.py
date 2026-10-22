@@ -14,7 +14,19 @@ from pydantic import BaseModel
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INPUT_FILE = os.path.join(BASE_DIR, "input.json")
 OUTPUT_FILE = os.path.join(BASE_DIR, "output.json")
+LESSONS_DIR = os.path.join(BASE_DIR, "lessons")
 load_dotenv(os.path.join(BASE_DIR, ".env"))
+
+
+def save_output(data):
+    # Saves the current lesson, plus a copy in lessons/ for the start screen's Recent lessons
+    with open(OUTPUT_FILE, "w") as f:
+        json.dump(data, f)
+    lesson_id = data.get("Response", {}).get("Id")
+    if lesson_id:
+        os.makedirs(LESSONS_DIR, exist_ok=True)
+        with open(os.path.join(LESSONS_DIR, f"{lesson_id}.json"), "w") as f:
+            json.dump(data, f)
 
 # Free-tier models are sometimes busy (5xx), and each one only allows 20 requests a day
 # (429), so try these in order. Each model has its own daily quota.
@@ -175,7 +187,10 @@ def default_ai():
 
     output = {
         "Response": {
+            "Id": time.strftime("%Y%m%d-%H%M%S"),
             "Topic": topic,
+            "Course": course,
+            "School": school,
             "Explanation": lesson.explanation,
             "Videos": video_links(topic),
             "Question": lesson.question,
@@ -184,8 +199,7 @@ def default_ai():
             "correctAnswer": correct_answer,
         }
     }
-    with open(OUTPUT_FILE, "w") as f:
-        json.dump(output, f)
+    save_output(output)
     return lesson.explanation
 
 

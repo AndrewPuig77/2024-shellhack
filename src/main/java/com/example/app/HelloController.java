@@ -40,7 +40,15 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.function.Consumer;
@@ -52,6 +60,9 @@ import org.scilab.forge.jlatexmath.TeXIcon;
 //One controller shared by all three screens; each FXML only fills in the fields it uses
 public class HelloController implements Initializable {
     private static final String OUTPUT_FILE = "src/SHELLHACKS_2024_PROJECT/output.json";
+    //A copy of every lesson, saved by the Python scripts, for the Recent lessons list
+    private static final String LESSONS_DIR = "src/SHELLHACKS_2024_PROJECT/lessons";
+    private static final int RECENT_LESSON_COUNT = 5;
     //LaTeX formulas are drawn in the same light color as the lesson text
     private static final java.awt.Color MATH_COLOR = new java.awt.Color(232, 240, 252);
 
@@ -71,6 +82,10 @@ public class HelloController implements Initializable {
     private Label errorLabel;
     @FXML
     private VBox loadingOverlay;
+    @FXML
+    private VBox recentCard;
+    @FXML
+    private VBox recentList;
 
     //Lesson and practice screens
     @FXML
@@ -99,6 +114,9 @@ public class HelloController implements Initializable {
         playBackgroundVideo();
         if (errorLabel != null) {
             errorLabel.managedProperty().bind(errorLabel.textProperty().isNotEmpty()); //No gap when there's no error
+        }
+        if (recentList != null) {
+            showRecentLessons();
         }
         if (lessonContent != null) {
             showLesson();
@@ -144,6 +162,48 @@ public class HelloController implements Initializable {
                     loadingOverlay.setVisible(false);
                     errorLabel.setText("Couldn't build a lesson. " + message);
                 });
+    }
+
+    //Start screen: the most recently used lessons, newest first
+    private void showRecentLessons() {
+        File[] files = new File(LESSONS_DIR).listFiles((dir, name) -> name.endsWith(".json"));
+        if (files == null) {
+            return;
+        }
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("MMM d");
+        for (File file : Arrays.copyOf(files, Math.min(RECENT_LESSON_COUNT, files.length))) {
+            JsonObject lesson = readResponse(file.getPath());
+            if (lesson == null) {
+                continue;
+            }
+            Label topic = new Label(text(lesson, "Topic"));
+            topic.getStyleClass().add("recent-topic");
+            topic.setWrapText(true);
+            String date = Instant.ofEpochMilli(file.lastModified()).atZone(ZoneId.systemDefault()).format(dateFormat);
+            String course = text(lesson, "Course");
+            Label meta = new Label(course.isEmpty() ? date : course + "  ·  " + date);
+            meta.getStyleClass().add("recent-meta");
+
+            VBox item = new VBox(topic, meta);
+            item.getStyleClass().add("recent-item");
+            item.setOnMouseClicked(e -> openRecentLesson(file));
+            recentList.getChildren().add(item);
+        }
+        setShown(recentCard, !recentList.getChildren().isEmpty());
+    }
+
+    //Makes a saved lesson the current one and opens it; no Gemini request needed
+    private void openRecentLesson(File lessonFile) {
+        try {
+            Files.copy(lessonFile.toPath(), Path.of(OUTPUT_FILE), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            errorLabel.setText("Couldn't open that lesson: " + e.getMessage());
+            return;
+        }
+        questionsAnswered = 0;
+        questionsCorrect = 0;
+        showScreen(root.getScene(), "scene2.fxml");
     }
 
     //Lesson screen: ask a follow-up and add the answer below the lesson
@@ -471,11 +531,16 @@ public class HelloController implements Initializable {
         }
     }
 
+    //The current lesson
     private static JsonObject readResponse() {
-        try (FileReader reader = new FileReader(OUTPUT_FILE)) {
+        return readResponse(OUTPUT_FILE);
+    }
+
+    private static JsonObject readResponse(String path) {
+        try (FileReader reader = new FileReader(path)) {
             return JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("Response");
         } catch (Exception e) {
-            System.out.println("Couldn't read " + OUTPUT_FILE + ": " + e);
+            System.out.println("Couldn't read " + path + ": " + e);
             return null;
         }
     }

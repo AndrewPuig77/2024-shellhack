@@ -3,7 +3,7 @@ import json
 from google.genai import types
 
 # Shares the file paths, .env loading and model retries with the lesson script
-from default import INPUT_FILE, MATH_RULES, OUTPUT_FILE, gemini_client, generate, run_script
+from default import INPUT_FILE, MATH_RULES, OUTPUT_FILE, gemini_client, generate, run_script, save_output
 
 
 SYSTEM_PROMPT = (
@@ -45,8 +45,7 @@ def followup_ai():
     response_data = data.setdefault("Response", {})
     response_data["Output"] = output  # The latest answer, which the app shows right away
     response_data["FollowUps"] = history + [{"question": question, "answer": output}]
-    with open(OUTPUT_FILE, "w") as f:
-        json.dump(data, f)
+    save_output(data)
     return output
 
 
