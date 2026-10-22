@@ -31,7 +31,9 @@ import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaView;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
+import javafx.scene.text.TextAlignment;
 import javafx.scene.text.TextFlow;
+import javafx.stage.FileChooser;
 
 import java.awt.Desktop;
 import java.awt.Graphics2D;
@@ -87,6 +89,8 @@ public class HelloController implements Initializable {
     @FXML
     private VBox loadingOverlay;
     @FXML
+    private Label loadingLabel; //The message on loadingOverlay, on screens that can load different things
+    @FXML
     private ToggleGroup levelGroup; //Beginner / Intermediate / Advanced
     @FXML
     private VBox recentCard;
@@ -113,6 +117,8 @@ public class HelloController implements Initializable {
 
     @FXML
     private VBox quizContent;
+    @FXML
+    private VBox flashcardContent;
 
     //Practice score for the current lesson; shared across screens, reset on a new lesson
     private static int questionsAnswered = 0;
@@ -122,6 +128,12 @@ public class HelloController implements Initializable {
     private static int quizIndex = 0;
     private static int quizCorrect = 0;
     private static final List<Integer> quizPicks = new ArrayList<>();
+
+    //Flashcard deck: card numbers still to review (front of the list is showing), and how many
+    //times "Study again" was pressed this round
+    private static final List<Integer> deck = new ArrayList<>();
+    private static boolean deckStarted = false;
+    private static int deckRepeats = 0;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -140,6 +152,9 @@ public class HelloController implements Initializable {
         }
         if (quizContent != null) {
             showQuiz();
+        }
+        if (flashcardContent != null) {
+            showFlashcards();
         }
     }
 
@@ -481,6 +496,7 @@ public class HelloController implements Initializable {
 
     private void generateQuiz(Scene scene) {
         errorLabel.setText("");
+        loadingLabel.setText("Writing your quiz...");
         loadingOverlay.setVisible(true);
         runInBackground(List.of("quiz.py"),
                 () -> {
@@ -589,6 +605,172 @@ public class HelloController implements Initializable {
         fresh.setOnAction(e -> generateQuiz(root.getScene()));
         HBox actions = new HBox(10, fresh, retake);
         quizContent.getChildren().add(actions);
+    }
+
+    //Lesson screen: open the lesson's flashcards, making them first if there aren't any yet
+    public void openFlashcards(ActionEvent event) {
+        JsonObject response = readResponse();
+        if (response != null && response.has("Flashcards") && !response.getAsJsonArray("Flashcards").isEmpty()) {
+            resetDeck();
+            showScreen(root.getScene(), "flashcards.fxml");
+        } else {
+            generateFlashcards(root.getScene());
+        }
+    }
+
+    private void generateFlashcards(Scene scene) {
+        errorLabel.setText("");
+        loadingLabel.setText("Making your flashcards...");
+        loadingOverlay.setVisible(true);
+        runInBackground(List.of("flashcards.py"),
+                () -> {
+                    resetDeck();
+                    showScreen(scene, "flashcards.fxml");
+                },
+                message -> {
+                    loadingOverlay.setVisible(false);
+                    errorLabel.setText("Couldn't make flashcards. " + message);
+                });
+    }
+
+    private static void resetDeck() {
+        deck.clear();
+        deckStarted = false;
+        deckRepeats = 0;
+    }
+
+    //Flashcards screen: the card on top of the deck, or a summary once every card is done
+    private void showFlashcards() {
+        flashcardContent.getChildren().clear();
+        JsonObject response = readResponse();
+        JsonArray cards = response != null && response.has("Flashcards")
+                ? response.getAsJsonArray("Flashcards") : new JsonArray();
+        if (response != null) {
+            topicLabel.setText(text(response, "Topic"));
+        }
+        if (cards.isEmpty()) {
+            errorLabel.setText("No flashcards found for this lesson. Go back and press Flashcards.");
+            return;
+        }
+        if (!deckStarted) {
+            for (int i = 0; i < cards.size(); i++) {
+                deck.add(i);
+            }
+            deckStarted = true;
+        }
+        if (deck.isEmpty()) {
+            showDeckFinished(cards);
+            return;
+        }
+
+        scoreLabel.setText(deck.size() + (deck.size() == 1 ? " card left" : " cards left"));
+        JsonObject card = cards.get(deck.get(0)).getAsJsonObject();
+        Label side = new Label("QUESTION");
+        side.getStyleClass().add("section-title");
+        VBox face = new VBox(16, side, flashcardText(text(card, "front")));
+        face.getStyleClass().add("flashcard");
+        Label hint = new Label("Click the card to see the answer");
+        hint.getStyleClass().add("thinking");
+
+        Button again = new Button("Study again");
+        Button gotIt = new Button("Got it");
+        gotIt.getStyleClass().add("primary");
+        again.setDisable(true);
+        gotIt.setDisable(true);
+        again.setOnAction(e -> {
+            deck.add(deck.remove(0)); //Back of the deck, so it comes up again later
+            deckRepeats++;
+            showFlashcards();
+        });
+        gotIt.setOnAction(e -> {
+            deck.remove(0);
+            showFlashcards();
+        });
+
+        //Each click flips between question and answer; marking unlocks once the answer was seen
+        face.setOnMouseClicked(e -> {
+            boolean showingAnswer = face.getStyleClass().contains("flipped");
+            side.setText(showingAnswer ? "QUESTION" : "ANSWER");
+            face.getChildren().set(1, flashcardText(text(card, showingAnswer ? "front" : "back")));
+            if (showingAnswer) {
+                face.getStyleClass().remove("flipped");
+            } else {
+                face.getStyleClass().add("flipped");
+            }
+            hint.setText("Did you know it? Click the card to flip it back.");
+            again.setDisable(false);
+            gotIt.setDisable(false);
+        });
+
+        HBox buttons = new HBox(12, again, gotIt);
+        buttons.setAlignment(Pos.CENTER);
+        VBox controls = new VBox(12, hint, buttons);
+        controls.setAlignment(Pos.CENTER);
+        flashcardContent.getChildren().addAll(face, controls);
+    }
+
+    private void showDeckFinished(JsonArray cards) {
+        scoreLabel.setText("All done");
+        Label done = new Label("All " + cards.size() + " cards done!");
+        done.getStyleClass().add("quiz-score");
+        Label note = new Label(deckRepeats == 0
+                ? "You knew every card the first time."
+                : "You marked cards to study again " + deckRepeats + (deckRepeats == 1 ? " time." : " times.")
+                        + " Go through them once more to lock them in.");
+        note.getStyleClass().add("subtitle");
+        note.setWrapText(true);
+        flashcardContent.getChildren().add(section("Nice work", new VBox(6, done, note)));
+
+        Button again = new Button("Go through them again");
+        again.getStyleClass().add("primary");
+        again.setOnAction(e -> {
+            resetDeck();
+            showFlashcards();
+        });
+        Button fresh = new Button("New set");
+        fresh.setOnAction(e -> generateFlashcards(root.getScene()));
+        Button export = new Button("Save for Anki / Quizlet");
+        export.setOnAction(e -> exportFlashcards(cards));
+        flashcardContent.getChildren().add(new HBox(10, again, fresh, export));
+    }
+
+    //Bigger text than the lesson, centered on the card
+    private static TextFlow flashcardText(String content) {
+        TextFlow flow = mathText(content);
+        flow.getStyleClass().add("flashcard-flow");
+        flow.setTextAlignment(TextAlignment.CENTER);
+        return flow;
+    }
+
+    //Saves the deck as a tab-separated file: one card per line, front<TAB>back.
+    //Both Anki and Quizlet import this; $$...$$ becomes \(...\), which Anki renders as math.
+    private void exportFlashcards(JsonArray cards) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save flashcards");
+        chooser.setInitialFileName(text(readResponse(), "Topic").replaceAll("[^A-Za-z0-9 ]", "").trim() + " flashcards.txt");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text file (tab-separated)", "*.txt"));
+        File file = chooser.showSaveDialog(root.getScene().getWindow());
+        if (file == null) {
+            return;
+        }
+        StringBuilder lines = new StringBuilder();
+        for (JsonElement element : cards) {
+            JsonObject card = element.getAsJsonObject();
+            lines.append(exportText(text(card, "front"))).append('\t')
+                    .append(exportText(text(card, "back"))).append('\n');
+        }
+        try {
+            Files.writeString(file.toPath(), lines.toString());
+            errorLabel.setText("");
+            scoreLabel.setText("Saved");
+        } catch (IOException e) {
+            errorLabel.setText("Couldn't save the file: " + e.getMessage());
+        }
+    }
+
+    private static String exportText(String text) {
+        //Tabs and newlines would break the one-card-per-line format
+        return text.replaceAll("\\$\\$(.+?)\\$\\$", "\\\\($1\\\\)").replaceAll("[\\t\\r\\n]+", " ");
     }
 
     //"Why is B wrong?" after a wrong answer: asks Gemini about the student's specific choice.

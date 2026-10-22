@@ -29,7 +29,8 @@
                         <Label fx:id="topicLabel" styleClass="top-title" />
                      </children>
                   </VBox>
-                  <Button text="Quiz me (5 questions)" onAction="#startQuiz" />
+                  <Button text="Flashcards" onAction="#openFlashcards" />
+                  <Button text="Quiz me" onAction="#startQuiz" />
                   <Button styleClass="primary" text="Try the practice problem →" onAction="#switchToScene3" />
                </children>
             </HBox>
@@ -59,7 +60,7 @@
       <VBox fx:id="loadingOverlay" styleClass="loading" alignment="CENTER" visible="false">
          <children>
             <ProgressIndicator prefWidth="60.0" prefHeight="60.0" />
-            <Label styleClass="loading-label" text="Writing your quiz..." />
+            <Label fx:id="loadingLabel" styleClass="loading-label" text="Writing your quiz..." />
             <Label styleClass="subtitle" text="This usually takes 10 to 20 seconds" />
          </children>
       </VBox>

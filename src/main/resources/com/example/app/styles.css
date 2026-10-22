@@ -328,6 +328,33 @@
     -fx-padding: 14 0 0 0;
 }
 
+/* Flashcards */
+.flashcard {
+    -fx-background-color: -card;
+    -fx-background-radius: 22;
+    -fx-border-color: rgba(56, 189, 248, 0.35);
+    -fx-border-radius: 22;
+    -fx-border-width: 1.5;
+    -fx-padding: 40 36;
+    -fx-min-height: 320;
+    -fx-alignment: center;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 30, 0.15, 0, 8);
+}
+
+.flashcard:hover {
+    -fx-border-color: -accent;
+}
+
+.flashcard.flipped {
+    -fx-background-color: rgba(30, 38, 84, 0.9);
+    -fx-border-color: #818cf8;
+}
+
+.flashcard-flow .lesson-text {
+    -fx-font-size: 21px;
+}
+
 /* Quiz results */
 .quiz-score {
     -fx-text-fill: white;

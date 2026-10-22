@@ -16,6 +16,7 @@ Originally built at ShellHacks 2024 by the team at
 - **Follow-up questions** in a chat-style thread under the lesson
 - **Practice problems** with instant feedback, "Why is my answer wrong?", Easier / Next / Harder, and a score
 - **Quiz mode**: 5 questions in a row with a final score and a review of what you missed
+- **Flashcards**: about 10 cards per lesson; flip them, mark Got it / Study again, export to Anki or Quizlet
 - **Recent lessons** on the start screen: reopen one instantly without using a Gemini request
 
 ## Setup
@@ -64,6 +65,7 @@ app runs in the background:
 | `practice.py` | Writes a new practice question (`same`, `easier` or `harder`). |
 | `quiz.py` | Writes a 5-question quiz in a single request. |
 | `deeper.py` | Adds one "Go deeper" section to the lesson. |
+| `flashcards.py` | Makes a deck of about 10 flashcards for the lesson. |
 
 They talk through two JSON files next to the scripts: `input.json` (what you typed) and
 `output.json` (the current lesson). Every lesson is also saved in `lessons/` for the Recent
