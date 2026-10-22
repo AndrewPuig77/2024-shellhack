@@ -59,3 +59,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+### App runtime files (rewritten on every use) ###
+src/SHELLHACKS_2024_PROJECT/input.json
+src/SHELLHACKS_2024_PROJECT/output.json
