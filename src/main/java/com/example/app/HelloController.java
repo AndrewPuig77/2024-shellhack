@@ -852,7 +852,7 @@ public class HelloController implements Initializable {
         if (mediaView == null || root == null) {
             return;
         }
-        mediaView.setMediaPlayer(MediaPlayerManager.getInstance().getMediaPlayer());
+        mediaView.mediaPlayerProperty().bind(MediaPlayerManager.getInstance().mediaPlayerProperty());
         mediaView.setPreserveRatio(true);
         InvalidationListener cover = o -> {
             double width = root.getWidth();
