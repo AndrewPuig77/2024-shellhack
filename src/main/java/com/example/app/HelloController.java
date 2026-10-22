@@ -316,14 +316,19 @@ public class HelloController implements Initializable {
         return section(text(section, "heading"), mathText(text(section, "body")));
     }
 
-    //"Go deeper" adds a new section that goes further; new sections appear just above the button
+    //Under the lesson: "Go deeper" adds a new section that goes further (new sections appear just
+    //above these buttons), and "Save study notes" exports everything as a PDF
     private VBox goDeeperBox() {
         Button deeper = new Button("Go deeper ↓");
-        Label hint = new Label("Adds a section with a harder example, where the ideas come from, or related topics.");
+        Button notes = new Button("Save study notes (PDF)");
+        Label hint = new Label("Go deeper adds a section with a harder example, where the ideas come from, or related topics.");
         hint.getStyleClass().add("thinking");
         hint.setWrapText(true);
-        VBox box = new VBox(8, deeper, hint);
+        HBox buttons = new HBox(10, deeper, notes);
+        buttons.setAlignment(Pos.CENTER);
+        VBox box = new VBox(8, buttons, hint);
         box.setAlignment(Pos.CENTER);
+        notes.setOnAction(e -> saveStudyNotes(notes, hint));
 
         deeper.setOnAction(e -> {
             deeper.setDisable(true);
@@ -346,6 +351,54 @@ public class HelloController implements Initializable {
                     });
         });
         return box;
+    }
+
+    //Asks where to save, writes a study sheet with Gemini if the lesson doesn't have one yet
+    //(one request), then builds the PDF and opens it
+    private void saveStudyNotes(Button notes, Label hint) {
+        JsonObject response = readResponse();
+        if (response == null) {
+            return;
+        }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save study notes");
+        chooser.setInitialFileName(text(response, "Topic").replaceAll("[^A-Za-z0-9 ]", "").trim() + " notes.pdf");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+        File file = chooser.showSaveDialog(root.getScene().getWindow());
+        if (file == null) {
+            return;
+        }
+        notes.setDisable(true);
+        if (response.has("Summary")) {
+            writeStudyNotes(file, notes, hint, "");
+            return;
+        }
+        hint.setText("Writing your study sheet...");
+        runInBackground(List.of("summary.py"),
+                () -> writeStudyNotes(file, notes, hint, ""),
+                //Still save the notes, just without the study sheet at the top
+                message -> writeStudyNotes(file, notes, hint, " (without a study sheet: " + message + ")"));
+    }
+
+    private void writeStudyNotes(File file, Button notes, Label hint, String note) {
+        try {
+            NotesPdf.write(readResponse(), file);
+            hint.setText("Saved " + file.getName() + note);
+            openFile(file);
+        } catch (Exception e) {
+            hint.setText("Couldn't save the PDF: " + e.getMessage());
+        }
+        notes.setDisable(false);
+    }
+
+    private static void openFile(File file) {
+        new Thread(() -> {
+            try {
+                Desktop.getDesktop().open(file);
+            } catch (Exception e) {
+                System.out.println("Couldn't open " + file + ": " + e);
+            }
+        }).start();
     }
 
     //The student's question, shown as a chat bubble on the right

@@ -7,6 +7,7 @@ module com.example.app {
     requires com.google.gson;
     requires jlatexmath;
     requires javafx.swing;
+    requires com.github.librepdf.openpdf; //Study notes PDF
 
 
     opens com.example.app to javafx.fxml;

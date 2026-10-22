@@ -18,6 +18,8 @@ Originally built at ShellHacks 2024 by the team at
 - **Quiz mode**: 5 questions in a row with a final score and a review of what you missed
 - **Flashcards**: about 10 cards per lesson; flip them, mark Got it / Study again, and export them as a
   text file that flashcard apps can import
+- **Study notes PDF**: a one-page study sheet plus the whole lesson, your questions, practice and
+  quiz questions, flashcards and videos, with formulas drawn properly
 - **Recent lessons** on the start screen: reopen one instantly without using a Gemini request
 
 ## Setup
@@ -67,6 +69,7 @@ app runs in the background:
 | `quiz.py` | Writes a 5-question quiz in a single request. |
 | `deeper.py` | Adds one "Go deeper" section to the lesson. |
 | `flashcards.py` | Makes a deck of about 10 flashcards for the lesson. |
+| `summary.py` | Writes the study sheet (key points, formulas, common mistakes) for the PDF notes. |
 
 They talk through two JSON files next to the scripts: `input.json` (what you typed) and
 `output.json` (the current lesson). Every lesson is also saved in `lessons/` for the Recent
