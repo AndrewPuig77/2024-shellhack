@@ -16,7 +16,8 @@ Originally built at ShellHacks 2024 by the team at
 - **Follow-up questions** in a chat-style thread under the lesson
 - **Practice problems** with instant feedback, "Why is my answer wrong?", Easier / Next / Harder, and a score
 - **Quiz mode**: 5 questions in a row with a final score and a review of what you missed
-- **Flashcards**: about 10 cards per lesson; flip them, mark Got it / Study again, export to Anki or Quizlet
+- **Flashcards**: about 10 cards per lesson; flip them, mark Got it / Study again, and export them as a
+  text file that flashcard apps can import
 - **Recent lessons** on the start screen: reopen one instantly without using a Gemini request
 
 ## Setup

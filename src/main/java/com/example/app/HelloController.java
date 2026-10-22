@@ -729,7 +729,7 @@ public class HelloController implements Initializable {
         });
         Button fresh = new Button("New set");
         fresh.setOnAction(e -> generateFlashcards(root.getScene()));
-        Button export = new Button("Save for Anki / Quizlet");
+        Button export = new Button("Export flashcards");
         export.setOnAction(e -> exportFlashcards(cards));
         flashcardContent.getChildren().add(new HBox(10, again, fresh, export));
     }
