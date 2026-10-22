@@ -1,6 +1,7 @@
 import html
 import json
 import os
+import sys
 import time
 
 from dotenv import load_dotenv
@@ -26,19 +27,72 @@ MODELS = [
 ]
 
 
+# Exit codes the app turns into friendly messages
+EXIT_QUOTA = 3
+EXIT_BUSY = 4
+EXIT_BAD_KEY = 5
+
+
+class QuotaExceeded(Exception):
+    pass
+
+
+class GeminiBusy(Exception):
+    pass
+
+
+class MissingKey(Exception):
+    pass
+
+
+def gemini_client():
+    key = os.getenv("GEMINI_API_KEY")
+    if not key:
+        raise MissingKey()
+    return genai.Client(api_key=key)
+
+
 def generate(client, **request):
-    # Two passes over the list, with a short pause, before giving up
-    attempts = MODELS + MODELS
-    for i, model in enumerate(attempts):
-        try:
-            return client.models.generate_content(model=model, **request)
-        except errors.APIError as e:
-            retryable = isinstance(e, errors.ServerError) or e.code == 429
-            if not retryable or i == len(attempts) - 1:
-                raise
-            print(f"{model} unavailable, trying next model: {e.code} {e.status}")
-            if i == len(MODELS) - 1:
-                time.sleep(5)
+    # Two passes over the list, with a short pause, before giving up.
+    # A model that's out of today's quota (429) is skipped on the second pass.
+    out_of_quota = set()
+    for attempt in range(2):
+        for model in MODELS:
+            if model in out_of_quota:
+                continue
+            try:
+                return client.models.generate_content(model=model, **request)
+            except errors.APIError as e:
+                if e.code == 429:
+                    out_of_quota.add(model)
+                elif not isinstance(e, errors.ServerError):
+                    raise
+                print(f"{model} unavailable, trying next model: {e.code} {e.status}")
+        if len(out_of_quota) == len(MODELS):
+            raise QuotaExceeded()
+        if attempt == 0:
+            time.sleep(5)
+    raise GeminiBusy()
+
+
+def run_script(main, *args):
+    # Runs a script's main function, turning Gemini failures into exit codes for the app
+    try:
+        main(*args)
+    except QuotaExceeded:
+        print("Every Gemini model is out of today's free requests.")
+        sys.exit(EXIT_QUOTA)
+    except GeminiBusy:
+        print("Gemini is too busy right now.")
+        sys.exit(EXIT_BUSY)
+    except MissingKey:
+        print("GEMINI_API_KEY is missing from .env")
+        sys.exit(EXIT_BAD_KEY)
+    except errors.ClientError as e:
+        if e.code in (401, 403) or "API key" in str(e):
+            print(f"Gemini rejected the API key: {e.code} {e.status}")
+            sys.exit(EXIT_BAD_KEY)
+        raise
 
 
 SYSTEM_PROMPT = (
@@ -98,7 +152,7 @@ def default_ai():
     course = data["Course"]
     topic = data["Topic"]
 
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    client = gemini_client()
     request = dict(
         contents=f"Institution: {school} | Course: {course} | Topic: {topic}",
         config=types.GenerateContentConfig(
@@ -129,4 +183,4 @@ def default_ai():
 
 
 if __name__ == "__main__":
-    default_ai()
+    run_script(default_ai)

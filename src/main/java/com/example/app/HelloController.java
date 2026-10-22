@@ -43,6 +43,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.function.Consumer;
 
 import org.scilab.forge.jlatexmath.TeXConstants;
 import org.scilab.forge.jlatexmath.TeXFormula;
@@ -139,9 +140,9 @@ public class HelloController implements Initializable {
                     questionsCorrect = 0;
                     showScreen(scene, "scene2.fxml");
                 },
-                () -> {
+                message -> {
                     loadingOverlay.setVisible(false);
-                    errorLabel.setText("Couldn't build a lesson. Check your API keys and internet connection, then try again.");
+                    errorLabel.setText("Couldn't build a lesson. " + message);
                 });
     }
 
@@ -170,8 +171,8 @@ public class HelloController implements Initializable {
                     setAsking(false);
                     scrollToBottom();
                 },
-                () -> {
-                    thinking.setText("Couldn't get an answer. Try asking again.");
+                message -> {
+                    thinking.setText("Couldn't get an answer. " + message);
                     setAsking(false);
                 });
     }
@@ -355,8 +356,8 @@ public class HelloController implements Initializable {
                     showPractice();
                     practiceScroll.setVvalue(0);
                 },
-                () -> {
-                    status.setText("Couldn't get a new question. Try again in a moment.");
+                message -> {
+                    status.setText("Couldn't get a new question. " + message);
                     buttons.forEach(b -> b.setDisable(false));
                 });
     }
@@ -419,17 +420,34 @@ public class HelloController implements Initializable {
 
     //Runs an AI script off the UI thread so the window stays responsive
     //command is the script name followed by any arguments, e.g. ["practice.py", "harder"]
-    private void runInBackground(List<String> command, Runnable onSuccess, Runnable onFailure) {
+    //onFailure receives a message explaining what went wrong
+    private void runInBackground(List<String> command, Runnable onSuccess, Consumer<String> onFailure) {
         Thread worker = new Thread(() -> {
-            boolean succeeded = runPythonScript(command);
-            Platform.runLater(succeeded ? onSuccess : onFailure);
+            int exitCode = runPythonScript(command);
+            Platform.runLater(() -> {
+                if (exitCode == 0) {
+                    onSuccess.run();
+                } else {
+                    onFailure.accept(errorMessage(exitCode));
+                }
+            });
         });
         worker.setDaemon(true);
         worker.start();
     }
 
-    //Runs one of the AI scripts and waits for it to finish writing output.json
-    private static boolean runPythonScript(List<String> command) {
+    //Exit codes come from run_script() in default.py
+    private static String errorMessage(int exitCode) {
+        return switch (exitCode) {
+            case 3 -> "You've used today's free Gemini requests. They reset at midnight Pacific time.";
+            case 4 -> "Gemini is busy right now. Try again in a minute.";
+            case 5 -> "Gemini rejected the API key. Check GEMINI_API_KEY in the .env file.";
+            default -> "Something went wrong. Check your internet connection, and the console for details.";
+        };
+    }
+
+    //Runs one of the AI scripts, waits for it to finish writing output.json, and returns its exit code
+    private static int runPythonScript(List<String> command) {
         //Prefer the project's virtual environment, which has the AI libraries installed
         String venvPython = ".venv/Scripts/python.exe";
         String python = new File(venvPython).exists() ? venvPython : "python";
@@ -443,13 +461,13 @@ public class HelloController implements Initializable {
             if (exitCode != 0) {
                 System.out.println(script + " failed with exit code " + exitCode);
             }
-            return exitCode == 0;
+            return exitCode;
         } catch (IOException e) {
             System.out.println("Couldn't run " + script + ": " + e);
-            return false;
+            return -1;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return false;
+            return -1;
         }
     }
 

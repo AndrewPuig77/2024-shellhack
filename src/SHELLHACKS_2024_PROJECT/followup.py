@@ -1,11 +1,9 @@
 import json
-import os
 
-from google import genai
 from google.genai import types
 
 # Shares the file paths, .env loading and model retries with the lesson script
-from default import INPUT_FILE, OUTPUT_FILE, generate
+from default import INPUT_FILE, OUTPUT_FILE, gemini_client, generate, run_script
 
 
 SYSTEM_PROMPT = (
@@ -37,7 +35,7 @@ def followup_ai():
         f"\n\nThe student asked: {turn['question']}\nYou answered: {turn['answer']}" for turn in history
     )
 
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    client = gemini_client()
     request = dict(
         contents=f"Your earlier lesson:\n{lesson}{conversation}\n\nThe student now asks: {question}",
         config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
@@ -54,4 +52,4 @@ def followup_ai():
 
 
 if __name__ == "__main__":
-    followup_ai()
+    run_script(followup_ai)

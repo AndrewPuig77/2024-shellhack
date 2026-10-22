@@ -1,13 +1,11 @@
 import json
-import os
 import sys
 
-from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
 # Shares the file paths, .env loading and model retries with the lesson script
-from default import OUTPUT_FILE, answer_number, generate
+from default import OUTPUT_FILE, answer_number, gemini_client, generate, run_script
 
 SYSTEM_PROMPT = (
     "You are a professor writing practice problems for a student who just studied a topic. "
@@ -49,7 +47,7 @@ def practice_ai(difficulty):
         + f"\n\n{DIFFICULTY[difficulty]}"
     )
 
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    client = gemini_client()
     response = generate(
         client,
         contents=contents,
@@ -71,4 +69,4 @@ def practice_ai(difficulty):
 
 
 if __name__ == "__main__":
-    practice_ai(sys.argv[1] if len(sys.argv) > 1 else "same")
+    run_script(practice_ai, sys.argv[1] if len(sys.argv) > 1 else "same")
