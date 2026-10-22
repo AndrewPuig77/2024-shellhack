@@ -11,9 +11,11 @@ public class MediaPlayerManager {
 
     private MediaPlayerManager() {
         // Private constructor to prevent instantiation
-        File file = new File("src/main/resources/com/example/app/Digital circuit board futuristic Technology background Video - Free 4K Stock Footage.mp4");
+        // Silent copy of the stock video: JavaFX halts playback if it can't open an audio device
+        File file = new File("src/main/resources/com/example/app/background.mp4");
         Media media = new Media(file.toURI().toString());
         mediaPlayer = new MediaPlayer(media);
+        mediaPlayer.setOnError(() -> System.out.println("Background video error: " + mediaPlayer.getError()));
         mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE); // Loop the video
         mediaPlayer.play(); // Start playing
     }
