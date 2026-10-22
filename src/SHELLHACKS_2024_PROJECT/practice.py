@@ -5,7 +5,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 # Shares the file paths, .env loading and model retries with the lesson script
-from default import LEVEL_RULES, MATH_RULES, OUTPUT_FILE, answer_number, gemini_client, generate, run_script, save_output
+from default import LEVEL_RULES, MATH_RULES, OUTPUT_FILE, answer_number, gemini_client, generate, repair_latex, run_script, save_output
 
 SYSTEM_PROMPT = (
     "You are a professor writing practice problems for a student who just studied a topic. "
@@ -60,9 +60,9 @@ def practice_ai(difficulty):
     problem = response.parsed
 
     lesson["PastQuestions"] = asked
-    lesson["Question"] = problem.question
-    lesson["Options"] = problem.options
-    lesson["Answer"] = problem.answer_explanation
+    lesson["Question"] = repair_latex(problem.question)
+    lesson["Options"] = [repair_latex(option) for option in problem.options]
+    lesson["Answer"] = repair_latex(problem.answer_explanation)
     lesson["correctAnswer"] = answer_number(problem.correct_letter)
     save_output(data)
 

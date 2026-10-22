@@ -135,6 +135,21 @@ SYSTEM_PROMPT = (
 )
 
 
+def repair_latex(text):
+    # Gemini sometimes writes LaTeX like \frac inside its JSON without doubling the backslash,
+    # so the JSON parser turns \f, \b, \t, \r and \n into control characters ("\frac" arrives
+    # as a form feed + "rac"). Turn them back into backslashes. Inside $$...$$ that covers all
+    # five; outside math only \f and \b, since tabs and newlines are normal in text.
+    in_math = {"\f": "\\f", "\b": "\\b", "\t": "\\t", "\r": "\\r", "\n": "\\n"}
+    in_text = {"\f": "\\f", "\b": "\\b"}
+    parts = text.split("$$")
+    for i, part in enumerate(parts):
+        for char, escaped in (in_math if i % 2 == 1 else in_text).items():
+            part = part.replace(char, escaped)
+        parts[i] = part
+    return "$$".join(parts)
+
+
 def answer_number(letter):
     # "B" -> 2, matching the order of the options; 0 if the model gave something odd
     letter = letter.strip().upper()[:1]
@@ -202,11 +217,11 @@ def default_ai():
             "Course": course,
             "School": school,
             "Level": level,
-            "Explanation": lesson.explanation,
+            "Explanation": repair_latex(lesson.explanation),
             "Videos": video_links(topic),
-            "Question": lesson.question,
-            "Options": lesson.options,
-            "Answer": lesson.answer_explanation,
+            "Question": repair_latex(lesson.question),
+            "Options": [repair_latex(option) for option in lesson.options],
+            "Answer": repair_latex(lesson.answer_explanation),
             "correctAnswer": correct_answer,
         }
     }

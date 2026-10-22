@@ -4,7 +4,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 # Shares the file paths, .env loading and model retries with the lesson script
-from default import LEVEL_RULES, MATH_RULES, OUTPUT_FILE, answer_number, gemini_client, generate, run_script, save_output
+from default import LEVEL_RULES, MATH_RULES, OUTPUT_FILE, answer_number, gemini_client, generate, repair_latex, run_script, save_output
 
 QUIZ_LENGTH = 5
 
@@ -55,9 +55,9 @@ def quiz_ai():
     )
     lesson["Quiz"] = [
         {
-            "Question": q.question,
-            "Options": q.options,
-            "Answer": q.answer_explanation,
+            "Question": repair_latex(q.question),
+            "Options": [repair_latex(option) for option in q.options],
+            "Answer": repair_latex(q.answer_explanation),
             "correctAnswer": answer_number(q.correct_letter),
         }
         for q in response.parsed.questions[:QUIZ_LENGTH]
