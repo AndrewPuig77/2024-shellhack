@@ -155,17 +155,9 @@ public class HelloController implements Initializable {
         textField2.clear();
         setAsking(true);
 
-        Label asked = new Label(question);
-        asked.getStyleClass().add("bubble-text");
-        asked.setWrapText(true);
-        asked.setMaxWidth(560);
-        HBox bubble = new HBox(asked);
-        bubble.getStyleClass().add("question-bubble");
-        HBox row = new HBox(bubble);
-        row.setAlignment(Pos.CENTER_RIGHT);
         Label thinking = new Label("Thinking...");
         thinking.getStyleClass().add("thinking");
-        lessonContent.getChildren().addAll(row, thinking);
+        lessonContent.getChildren().addAll(questionBubble(question), thinking);
         scrollToBottom();
 
         runInBackground(List.of("followup.py"),
@@ -200,6 +192,28 @@ public class HelloController implements Initializable {
             }
             lessonContent.getChildren().add(section("Watch next", cards));
         }
+
+        //Earlier follow-up questions and answers, so they're still here after visiting the practice screen
+        JsonArray followUps = response.has("FollowUps") ? response.getAsJsonArray("FollowUps") : new JsonArray();
+        for (JsonElement element : followUps) {
+            JsonObject turn = element.getAsJsonObject();
+            lessonContent.getChildren().addAll(
+                    questionBubble(text(turn, "question")),
+                    section("Answer", mathText(text(turn, "answer"))));
+        }
+    }
+
+    //The student's question, shown as a chat bubble on the right
+    private static HBox questionBubble(String question) {
+        Label asked = new Label(question);
+        asked.getStyleClass().add("bubble-text");
+        asked.setWrapText(true);
+        asked.setMaxWidth(560);
+        HBox bubble = new HBox(asked);
+        bubble.getStyleClass().add("question-bubble");
+        HBox row = new HBox(bubble);
+        row.setAlignment(Pos.CENTER_RIGHT);
+        return row;
     }
 
     //A clickable YouTube thumbnail card; opens the video in the browser
