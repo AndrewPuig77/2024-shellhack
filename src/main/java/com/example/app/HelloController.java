@@ -74,6 +74,9 @@ public class HelloController implements Initializable {
     //Long enough for both passes over the busy free-tier models, short enough to not hang forever
     private static final int SCRIPT_TIMEOUT_SECONDS = 180;
     private static final int EXIT_TIMED_OUT = -2;
+    private static final int EXIT_NO_PYTHON = -3;
+    //The project's virtual environment, which has the AI libraries installed (see README)
+    private static final String VENV_PYTHON = ".venv/Scripts/python.exe";
     //True while an AI script is running; shared by every screen
     private static final AtomicBoolean requestRunning = new AtomicBoolean(false);
     //LaTeX formulas are drawn in the same light color as the lesson text
@@ -989,15 +992,18 @@ public class HelloController implements Initializable {
             case 4 -> "Gemini is busy right now. Try again in a minute.";
             case 5 -> "Gemini rejected the API key. Check GEMINI_API_KEY in the .env file.";
             case EXIT_TIMED_OUT -> "Gemini took too long to answer. Check your internet connection and try again.";
-            default -> "Something went wrong. Check your internet connection, and the console for details.";
+            case EXIT_NO_PYTHON -> "Couldn't start Python. Install it and follow the Setup steps in the README.";
+            //Without the project's .venv, the scripts fail on their first import
+            default -> new File(VENV_PYTHON).exists()
+                    ? "Something went wrong. Check your internet connection, and the console for details."
+                    : "The Python setup is missing. Follow the Setup steps in the README to create the .venv folder.";
         };
     }
 
     //Runs one of the AI scripts, waits for it to finish writing output.json, and returns its exit code
     private static int runPythonScript(List<String> command) {
         //Prefer the project's virtual environment, which has the AI libraries installed
-        String venvPython = ".venv/Scripts/python.exe";
-        String python = new File(venvPython).exists() ? venvPython : "python";
+        String python = new File(VENV_PYTHON).exists() ? VENV_PYTHON : "python";
         String script = command.get(0);
         List<String> args = new ArrayList<>(List.of(python, "src/SHELLHACKS_2024_PROJECT/" + script));
         args.addAll(command.subList(1, command.size()));
@@ -1017,8 +1023,9 @@ public class HelloController implements Initializable {
             }
             return exitCode;
         } catch (IOException e) {
+            //The Python program itself couldn't be started (not installed, or not on the PATH)
             System.out.println("Couldn't run " + script + ": " + e);
-            return -1;
+            return EXIT_NO_PYTHON;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return -1;
