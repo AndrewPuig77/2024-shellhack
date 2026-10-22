@@ -1,5 +1,79 @@
-# SHELLHACKS_2024_PROJECT
+# uHackEDU
 
-A JavaFX study helper built at ShellHacks 2024.
+An AI study buddy desktop app. Enter a topic, course and school, and it builds a lesson with
+math rendered properly, suggests YouTube videos, answers follow-up questions, and quizzes you
+with practice problems.
 
-Originally built by the team at [ProgramPedro/SHELLHACKS_2024_PROJECT](https://github.com/ProgramPedro/SHELLHACKS_2024_PROJECT).
+Originally built at ShellHacks 2024 by the team at
+[ProgramPedro/SHELLHACKS_2024_PROJECT](https://github.com/ProgramPedro/SHELLHACKS_2024_PROJECT).
+
+## Features
+
+- **Lessons** tailored to your course and school, with LaTeX math drawn inline
+- **Videos**: three related YouTube videos as thumbnail cards
+- **Follow-up questions** in a chat-style thread under the lesson
+- **Practice problems** with instant feedback, Easier / Next / Harder, and a score
+
+## Setup
+
+You need:
+
+- **JDK 22 or newer** (e.g. `winget install EclipseAdoptium.Temurin.25.JDK`)
+- **Python 3.11 or newer** (e.g. `winget install Python.Python.3.13`)
+- Two free Google API keys (see below)
+
+From the project folder:
+
+```
+python -m venv .venv
+.venv\Scripts\pip install -r src\SHELLHACKS_2024_PROJECT\requirements.txt
+```
+
+### API keys
+
+Copy `src/SHELLHACKS_2024_PROJECT/.env.example` to `.env` in the same folder and fill in:
+
+| Key | Where to get it | Used for |
+|---|---|---|
+| `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) → Get API key | Lessons, follow-ups, practice |
+| `YOUTUBE_API_KEY` | [Google Cloud Console](https://console.cloud.google.com) → enable **YouTube Data API v3** → Credentials → API key (starts with `AIza`) | Video suggestions |
+
+Both are free. `.env` is gitignored, so keys never get committed.
+
+## Run
+
+```
+.\mvnw.cmd clean javafx:run
+```
+
+Run it from the project folder: the app finds its Python scripts and data files by relative path.
+
+## How it works
+
+The JavaFX app (Java) handles the screens. The AI work happens in small Python scripts that the
+app runs in the background:
+
+| Script | Does |
+|---|---|
+| `default.py` | Builds a lesson + practice problem, finds videos. Also holds the shared Gemini code. |
+| `followup.py` | Answers a follow-up question using the lesson and earlier follow-ups as context. |
+| `practice.py` | Writes a new practice question (`same`, `easier` or `harder`). |
+
+They talk through two JSON files next to the scripts: `input.json` (what you typed) and
+`output.json` (the current lesson). Both are created automatically and gitignored.
+
+## Free tier limits
+
+- **Gemini**: each model allows about 20 requests per day on the free tier. The scripts rotate
+  through five models, so roughly 100 requests a day. Every lesson, follow-up or new practice
+  question is one request. When they're all used up, the app says so; limits reset at midnight
+  Pacific time.
+- **YouTube**: 10,000 units a day, and each lesson's video search uses 100 (about 100 lessons).
+
+## Project layout
+
+```
+src/main/java/com/example/app/      Java app (HelloController drives all screens)
+src/main/resources/com/example/app/ Screens (.fxml), styles.css, background video
+src/SHELLHACKS_2024_PROJECT/        Python AI scripts, .env, input/output JSON
+```
