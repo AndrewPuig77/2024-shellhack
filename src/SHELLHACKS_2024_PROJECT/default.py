@@ -95,15 +95,22 @@ def run_script(main, *args):
         raise
 
 
+# Formatting rules shared by every prompt, so the app's LaTeX renderer can draw the math
+MATH_RULES = (
+    "Write all math as LaTeX wrapped in double dollar signs, like $$x^2 + 1$$, "
+    "everywhere including inside answer options. "
+    "Write chemical formulas upright with \\mathrm, like $$\\mathrm{CO_2}$$ or "
+    "$$\\mathrm{C_6H_{12}O_6}$$, and units with \\text, like $$9.8\\text{ m/s}^2$$. "
+    "Never use single dollar signs. Use plain text, not Markdown."
+)
+
 SYSTEM_PROMPT = (
     "You are a professor helping a student understand a topic from their course. "
     "Tailor the explanation to the institution and course they give you. "
     "After the explanation, write one practice problem as a multiple choice question "
     "with exactly 4 options. Put only the question in 'question' and the 4 options, "
     "without letter labels, in 'options'. Then explain the correct answer. "
-    "Write all math as LaTeX wrapped in double dollar signs, like $$x^2 + 1$$, "
-    "everywhere including inside the options. "
-    "Never use single dollar signs. Use plain text, not Markdown."
+    + MATH_RULES
 )
 
 

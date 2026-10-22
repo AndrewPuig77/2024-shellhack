@@ -3,15 +3,14 @@ import json
 from google.genai import types
 
 # Shares the file paths, .env loading and model retries with the lesson script
-from default import INPUT_FILE, OUTPUT_FILE, gemini_client, generate, run_script
+from default import INPUT_FILE, MATH_RULES, OUTPUT_FILE, gemini_client, generate, run_script
 
 
 SYSTEM_PROMPT = (
     "You are a professor helping a student understand a topic from their course. "
     "They have read your earlier lesson and practice problem and now have a follow-up "
     "question. Answer it clearly, referring back to the lesson where it helps. "
-    "Write all math as LaTeX wrapped in double dollar signs, like $$x^2 + 1$$. "
-    "Never use single dollar signs. Use plain text, not Markdown."
+    + MATH_RULES
 )
 
 
