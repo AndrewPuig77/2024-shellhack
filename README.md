@@ -22,6 +22,11 @@ Originally built at ShellHacks 2024 by the team at
   quiz questions, flashcards and videos, with formulas drawn properly
 - **Recent lessons** on the start screen: reopen one instantly without using a Gemini request
 
+## Demo
+
+https://github.com/user-attachments/assets/18c32475-8952-4913-a3d1-1d28685c2c70
+
+
 ## Setup
 
 You need:
